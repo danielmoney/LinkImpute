@@ -21,7 +21,13 @@ import Exceptions.NotEnoughGenotypesException;
 import Exceptions.WrongNumberOfSNPsException;
 import Utils.BufferByteArray;
 import Utils.SortByIndexDouble;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Class to perform standard LD-kNNi imputation
@@ -69,6 +75,32 @@ public class KnniLD
         }
     }
     
+    //public KnniLD(Map<Integer,Set<Integer>> topn)
+    public KnniLD(Map<Integer,List<Integer>> topn)
+    {
+        this(topn,5,20);
+    }
+    
+    //public KnniLD(Map<Integer,Set<Integer>> topn, int k)
+    public KnniLD(Map<Integer,List<Integer>> topn, int k)
+    {
+        this(topn,k,20);
+    }
+    
+    //public KnniLD(Map<Integer,Set<Integer>> topn, int k, int l)
+    public KnniLD(Map<Integer,List<Integer>> topn, int k, int l)
+    {
+        this.k = k;
+        this.l = l;
+        sim = new Integer[topn.size()][];
+        //for (Entry<Integer,Set<Integer>> e: topn.entrySet())
+        for (Entry<Integer,List<Integer>> e: topn.entrySet())
+        {
+            Integer[] a = new Integer[e.getValue().size()];
+            sim[e.getKey()] = e.getValue().toArray(a);
+        }
+    }
+    
     /**
      * Impute missing data
      * @param original The original data set.  Missing data is coded as -1
@@ -80,6 +112,8 @@ public class KnniLD
      */
     public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
+        ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        //ExecutorService es = Executors.newFixedThreadPool(1);
         //Calculate the amount of missingness for each sample
         double[] miss = new double[original.length];
         for (int i = 0; i < original.length; i++)
@@ -110,12 +144,42 @@ public class KnniLD
         
         byte[][] imputed = new byte[original.length][];
 
+        int c = 0;
         // Loop over samples in order and then snps, imputing those genotypes that
         // are missing
         for (int s: samporder)
         {
             imputed[s] = new byte[original[s].length];
-            for (int p = 0; p < original[s].length; p++)
+            //Added
+            BufferByteArray newo = o[s].clone();
+            List<Part> parts = new ArrayList<>();
+            
+            int preend = -1;
+            for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++)
+            {
+                int start = preend + 1;
+                int end = (i+1) * original[s].length / Runtime.getRuntime().availableProcessors();
+                preend = end;
+                
+                //parts.add(new Part(original,imputed[s],o,s,start,end));
+                parts.add(new Part(original,imputed[s],o,newo,s,start,end));
+            }
+            try
+            {
+                es.invokeAll(parts);
+            }
+            catch (InterruptedException ex)
+            {
+                //NEED TO DEAL WITH THIS PROPERLY!
+            }
+            o[s] = newo;
+            c++;
+            if ((c % 100) == 0)
+            {
+                System.out.println("\tDone 1:" + c);
+            }
+            
+            /*for (int p = 0; p < original[s].length; p++)
             {
                 if (original[s][p] >= 0)
                 {
@@ -127,7 +191,7 @@ public class KnniLD
                     imputed[s][p] = imp;
                     o[s].set(p, imp);
                 }
-            }
+            }*/
         }
         
         // Create a second lot of BufferedByteArrays for the second round of imputation
@@ -139,11 +203,41 @@ public class KnniLD
         
         byte[][] imputed2 = new byte[original.length][];
 
+        c = 0;
         // For genotypes that were originally missing impute again, this time
         // starting with the complete genotype matrix from the first round
         for (int s: samporder)
         {
             imputed2[s] = new byte[original[s].length];
+            List<Part> parts = new ArrayList<>();
+            //Added
+            BufferByteArray newo = o2[s].clone();
+            
+            int preend = -1;
+            for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++)
+            {
+                int start = preend + 1;
+                int end = (i+1) * original[s].length / Runtime.getRuntime().availableProcessors();
+                preend = end;
+                
+                parts.add(new Part(original,imputed2[s],o2,newo,s,start,end));
+            }
+            try
+            {
+                es.invokeAll(parts);
+            }
+            catch (InterruptedException ex)
+            {
+                //NEED TO DEAL WITH THIS PROPERLY!
+            }
+            o2[s] = newo;
+            c++;
+            if ((c % 100) == 0)
+            {
+                System.out.println("\tDone 2:" + c);
+            }
+            
+            /*imputed2[s] = new byte[original[s].length];
             for (int p = 0; p < original[s].length; p++)
             {
                 if (original[s][p] >= 0)
@@ -156,8 +250,10 @@ public class KnniLD
                     imputed2[s][p] = imp;
                     o2[s].set(p, imp);
                 }
-            }
+            }*/
         }
+        
+        es.shutdown();
        
         return imputed2;
     }
@@ -172,7 +268,8 @@ public class KnniLD
         Integer[] indicies = si.sort();
         
         int f = 0;
-        int i = 1;
+        //int i = 1;
+        int i = 0;
 
         // Store the weights applicable to each of the three genotypes
         double[] w = new double[3];
@@ -183,10 +280,10 @@ public class KnniLD
             if (original[indicies[i]].get(p) >= 0)
             {
                 // If we have a sample at a distance of zero simply impute from that
-                if (dist[indicies[i]] == 0.0)
-                {
-                    return original[indicies[i]].get(p);
-                }  
+                //TEMP if (dist[indicies[i]] == 0.0)
+                //{
+                //    return original[indicies[i]].get(p);
+                //}  
                 w[original[indicies[i]].get(p)] += 1.0 / dist[indicies[i]];
                 f++;
             }
@@ -222,12 +319,14 @@ public class KnniLD
         for (int i = 0; i < values.length; i++)
         {
             if (i != s)
+            //if ((i != s) && (values[i].get(p) >= 0))
             {
                 ret[i] = sdist(values[s], values[i], p);
             }
             else
             {
-                ret[i] = 0.0;
+                //ret[i] = 0.0;
+                ret[i] = Double.MAX_VALUE;
             }
         }
         return ret;
@@ -259,6 +358,7 @@ public class KnniLD
             // where both samples had a known genotype then set the distance to
             // max
             //HO-HUM, THE FOLLOWING LINE MAKES THINGS BETTER!
+            //DOING THE +1 BELOW MAKES MORE SENSE TO ME
             //d = d + 1;
             if (c == 0)
             {
@@ -267,7 +367,7 @@ public class KnniLD
             //Else return the scaled distance
             else
             {
-                return (double) ((double) d * (double) l / (double) c);
+                return ((double) d * (double) l / (double) c) + 1.0;
             }
         }
         else
@@ -277,6 +377,49 @@ public class KnniLD
             //currently not too informative
             throw new WrongNumberOfSNPsException("Unknown");
         }        
+    }
+    
+    private class Part implements Callable<Void>
+    {
+        //public Part(byte[][] original, byte[] imputed, BufferByteArray[] o,
+        public Part(byte[][] original, byte[] imputed, BufferByteArray[] o, BufferByteArray newo,
+                int s, int start, int end)
+        {
+            this.original = original;
+            this.imputed = imputed;
+            this.o = o;
+            this.newo = newo;
+            this.s = s;
+            this.start = start;
+            this.end = end;
+        }
+        
+        public Void call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+        {
+            for (int p = start; p < end; p++)
+            {
+                if (original[s][p] >= 0)
+                {
+                    imputed[p] = original[s][p];
+                }
+                else
+                {
+                    byte imp = impute(s, p, o);
+                    imputed[p] = imp;
+                    newo.set(p, imp);
+                }
+            }
+            return null;
+        }
+        
+        private final int s;
+        private final int start;
+        private final int end;
+        private final byte[] imputed;
+        private final byte[][] original;
+        private final BufferByteArray[] o;
+        private final BufferByteArray newo;
+        
     }
     
     Integer[] samporder;

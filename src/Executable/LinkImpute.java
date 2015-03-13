@@ -15,12 +15,20 @@
  * along with LinkImpute.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+//DELETE THIS!
+//--accuracy --masknum=10000 C:\\Users\\Daniel\\Documents\\Imputation\\Full\\Raw\\num.raw c:\\shit2.dat
+//--accuracy -a --maskin=c:\\Users\\Daniel\\Documents\\Imputation\\Maize\\mask.dat C:\\Users\\Daniel\\Documents\\Imputation\\Maize\\combined_transpose.dat c:\\shit2.dat
+
 package Executable;
 
 import Exceptions.DataException;
 import Exceptions.InvalidGenotypeException;
 import Exceptions.NotEnoughGenotypesException;
 import Exceptions.WrongNumberOfSNPsException;
+import static Executable.BestK.bestK;
+import Executable.BestKL.KL;
+import static Executable.BestKL.bestKL;
+import static Executable.Mask.getMaskNumber;
 import Files.PlinkNumeric;
 import Files.VCF.FormatDefinition;
 import Files.VCF.Position;
@@ -28,7 +36,8 @@ import Files.VCF.VCF;
 import Methods.Knni;
 import Methods.KnniLD;
 import Methods.Mode;
-import Utils.LD;
+import Correlation.Correlation;
+import Correlation.Pearson;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,6 +50,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -97,8 +107,25 @@ public class LinkImpute
         method.addOption(Option.builder("l").desc("Use LD-kNN imputation (default)").build());
         options.addOptionGroup(method);
         
-        options.addOption(Option.builder().longOpt("neighbours").hasArg().desc("Number of neighbours to use in kNNi methods").build());
-        options.addOption(Option.builder().longOpt("snps").hasArg().desc("The number of SNPs used to determine nearest neighbours in LD-kNNi").build());
+        OptionGroup params = new OptionGroup();
+        params.addOption(Option.builder("c").desc("Calculate the best values of k and l").build());
+        params.addOption(Option.builder("f").desc("Use fixed values of k and l (default)").build());
+        options.addOptionGroup(params);
+        
+        options.addOption(Option.builder().longOpt("neighbours").hasArg().desc("Number of neighbours to use in kNNi methods.  Defaults to 5.").build());
+        options.addOption(Option.builder().longOpt("snps").hasArg().desc("The number of SNPs used to determine nearest neighbours in LD-kNNi.  Defaults to 20.").build());
+        
+        options.addOption(Option.builder().longOpt("accuracy").desc("Calculate an imputaion accuracy statistic").build());
+        
+        options.addOption(Option.builder().longOpt("masknum").hasArg().desc("The number of SNPs to mask when using the -c or --accuracy options").build());
+        options.addOption(Option.builder().longOpt("maskin").hasArg().desc("Use the mask in the given file instead of creating a new one").build());
+        options.addOption(Option.builder().longOpt("maskout").hasArg().desc("Output the mask to the given file").build());
+        
+        options.addOption(Option.builder().longOpt("ldout").hasArg().desc("Output the snps most in LD with each snp to the given file").build());
+        options.addOption(Option.builder().longOpt("ldnum").hasArg().desc("Output the given number of snps most in LD. Defaults to snps value").build());
+        options.addOption(Option.builder().longOpt("ldin").hasArg().desc("Read LD information from the given file rather the recalculate").build());
+        
+        options.addOption(Option.builder().longOpt("noimpute").desc("Do not perform the imputation.  Use if just wanting a mask or the LD information").build());
         
         options.addOption(Option.builder().longOpt("help").desc("Display this help").build());
         
@@ -161,7 +188,15 @@ public class LinkImpute
                         }
                     }
                 }
-                
+                if (commands.hasOption("k") || commands.hasOption("m"))
+                {
+                    if (commands.hasOption("ldnum") || commands.hasOption("ldin") || commands.hasOption("ldout"))
+                    {
+                        System.out.println("LD options can only be used with LD-kNNi");
+                        help = true;
+                    }
+                }
+                               
                 if (!commands.hasOption("l") && !commands.hasOption("m"))
                 {
                     if (commands.hasOption("neighbours"))
@@ -177,7 +212,7 @@ public class LinkImpute
                         }
                         catch (NumberFormatException ex)
                         {
-                            System.out.println("Number of snps must be a positive integer");
+                            System.out.println("Number of neighbours must be a positive integer");
                             help = true;
                         }
                     }
@@ -188,15 +223,67 @@ public class LinkImpute
                             int l = Integer.parseInt(commands.getOptionValue("snps"));
                             if (l <= 0)
                             {
-                                System.out.println("Number of neighbours must be a positive integer");
+                                System.out.println("Number of snps must be a positive integer");
                                 help = true;
                             }
                         }
                         catch (NumberFormatException ex)
                         {
-                            System.out.println("Number of neighbours must be a positive integer");
+                            System.out.println("Number of snps must be a positive integer");
                             help = true;
                         }
+                    }
+                    if (commands.hasOption("ldin"))
+                    {
+                        if (commands.hasOption("ldnum"))
+                        {
+                            System.out.println("ldnum and ldin options cannot be used together");
+                            help = true;
+                        }
+                        else
+                        {
+                            File f = new File(commands.getOptionValue("ldin"));
+                            if (!f.canRead())
+                            {
+                                System.out.println("Cannot read ldin file");
+                                help = true;
+                            }
+                        }
+                    }
+                }
+                
+                if (commands.hasOption("c"))
+                {
+                    if (commands.hasOption("snps") || commands.hasOption("neighbours"))
+                    {
+                        System.out.println("Can't define parameters with the calucate parameters (-c) option");
+                        help = true;
+                    }
+                    if (commands.hasOption("accuracy"))
+                    {
+                        System.out.println("Accuracy is automatically calculated if parameters are calculated");
+                        help = true;
+                    }
+                }
+                
+                if (commands.hasOption("c") || commands.hasOption("accuracy"))
+                {
+                    if (commands.hasOption("masknum"))
+                    {
+                        try
+                        {
+                            int mask = Integer.parseInt(commands.getOptionValue("mask"));
+                            if (mask <= 0)
+                            {
+                                System.out.println("Number of sites to mask must be a positive integer");
+                                help = true;
+                            }
+                        }
+                        catch (NumberFormatException ex)
+                        {
+                            System.out.println("Number of sites to mask must be a positive integer");
+                            help = true;
+                        }                        
                     }
                 }
             }
@@ -237,10 +324,14 @@ public class LinkImpute
     {
         HelpFormatter formatter = new HelpFormatter();
         formatter.setLongOptSeparator("=");
-        String[] order = {"p", "a", "v", "l", "k", "m", "neighbours","snps","help"};
+        String[] order = {"p", "a", "v", "l", "k", "m", "f", "c", "neighbours","snps","accuracy","masknum","maskin","maskout","ldout","ldnum","ldin","noimpute","help"};
         formatter.setOptionComparator(new OptionOrder(order));
-        formatter.printHelp("Impute [-p | -a | -v] [-l | -k | -m]\n" +
-        "       [--neighbours=<arg>]  [--snps=<arg>] INFILE OUTFILE", 
+        formatter.printHelp("Impute [-p | -a | -v] [-l | -k | -m] [-f | -c]\n" +
+        "       [--neighbours=<arg>] [--snps=<arg>]\n" + 
+        "       [--masknum=<arg>] [--maskin=<arg>] [--maskout=<arg>]\n" +
+        "       [--ldout=<arg>] [--ldnum=<arg>] [--ldin=<arg>]\n" +
+        "       [--noimpute]\n" +
+        "       INFILE OUTFILE", 
                 "\nImputes any missing values in the input file\n\n", options,
                 "\nOutput file will be in the same format as the input and will be indentical "
                         + "except for missing values being replaced by imputed values.");
@@ -271,9 +362,6 @@ public class LinkImpute
         String in = commands.getArgList().get(0);
         String out = commands.getArgList().get(1);
         
-        int k = Integer.parseInt(commands.getOptionValue("neighbours","5"));
-        int l = Integer.parseInt(commands.getOptionValue("snps","20"));
-        
         byte[][] original;
         
         PlinkNumeric pn = null;
@@ -302,40 +390,146 @@ public class LinkImpute
                 break;
         }
         
-        System.out.println("Starting imputation on " + original.length + " samples and " +
-            original[0].length + " SNPs...");
-        byte[][] imputed;
-        switch (method)
-        {
-            case 'm':
-                Mode mode = new Mode();
-                imputed = mode.compute(original);
-                break;
-            case 'k':
-                Knni knni = new Knni(k);
-                imputed = knni.compute(original);
-                break;
-            case 'l':
-            default:
-                double[][] ld = LD.calculate(transpose(original));
-                KnniLD knnild = new KnniLD(ld,k,l);
-                imputed = knnild.compute(original);
-                break;
-        }
-        System.out.println("Finished imputation.");
+        System.out.println("Read in data set of " + original.length + " samples and " +
+            original[0].length + " SNPs");
         
-        switch (fileFormat)
+      
+        //Correlation corr = new EM();
+        Correlation corr = new Pearson();
+        //Correlation corr = new Hamming();
+        //double[][] ld = corr.calculate(transpose(original));
+        //Map<Integer,Set<Integer>> ld;
+        Map<Integer,List<Integer>> ld = null;
+        if ((method != 'm') && (method != 'k'))
         {
-            case 'v':
-                writeVCFResult(new File (out), imputed, vcf);
-                break;
-            case 'a':
-                writeArrayResult(new File(out), imputed);
-                break;
-            case 'p':
-            default:
-                writePlinkResult(new File(out), imputed, pn);
-                break;
+            if (!commands.hasOption("ldin"))
+            {
+                System.out.println("Calculating correlations");
+                if (!commands.hasOption("ldnum"))
+                {
+                    if (commands.hasOption("c"))
+                    {
+                        ld = corr.topn(transpose(original), 100);
+                    }
+                    else
+                    {
+                        ld = corr.topn(transpose(original), Integer.parseInt(commands.getOptionValue("snps","20")));
+                    }
+                }
+                else
+                {
+                    ld = corr.topn(transpose(original), Integer.parseInt(commands.getOptionValue("ldnum")));
+                }
+            }
+            else
+            {
+                ld = readLD(new File(commands.getOptionValue("ldin")));
+            }
+            if (commands.hasOption("ldout"))
+            {
+                writeLD(new File(commands.getOptionValue("ldout")),ld);
+            }
+        }
+        
+        byte[][] unmasked = null;
+        //boolean[][] mask = null;
+        Mask mask = null;
+        if (commands.hasOption("accuracy"))
+        {
+            unmasked = original;
+            if (commands.hasOption("maskin"))
+            {
+                mask = new Mask(new File(commands.getOptionValue("maskin")));
+            }
+            else
+            {
+                int masknum = getMaskNumber(original,commands.getOptionValue("masknum"));
+                //mask = generateMask(original,masknum);
+                mask = new Mask(original,masknum);
+            }
+            
+            if (commands.hasOption("maskout"))
+            {
+                mask.saveToFile(new File(commands.getOptionValue("maskout")));
+            }
+            //original = generateMasked(original,mask);
+            original = mask.mask(original);
+        }
+        
+        if (!commands.hasOption("noimpute"))
+        {
+            byte[][] imputed;
+            int k, l;
+            
+            switch (method)
+            {
+                case 'm':
+                    Mode mode = new Mode();
+                    imputed = mode.compute(original);
+                    break;
+                case 'k':
+                    if (commands.hasOption("c"))
+                    {
+                        int masknum = getMaskNumber(original,commands.getOptionValue("mask"));
+                        k = bestK(original,masknum);
+                    }
+                    else
+                    {
+                        k = Integer.parseInt(commands.getOptionValue("neighbours","5"));
+                    }
+                    Knni knni = new Knni(k);
+                    imputed = knni.compute(original);
+                    break;
+                case 'l':
+                default:
+                    //System.out.println("Calculating LD...");
+                    if (commands.hasOption("c"))
+                    {
+                        //ld = corr.topn(transpose(original), 100);
+                        int masknum = getMaskNumber(original,commands.getOptionValue("mask"));
+                        KL kl = bestKL(original,masknum,ld);
+                        k = kl.getK();
+                        l = kl.getL();
+                    }
+                    else
+                    {
+                        k = Integer.parseInt(commands.getOptionValue("neighbours","5"));
+                        l = Integer.parseInt(commands.getOptionValue("snps","20"));
+                        //ld = corr.topn(transpose(original), l);
+                    }
+                    System.out.println("Starting imputation...");
+                    KnniLD knnild = new KnniLD(ld,k,l);
+                    imputed = knnild.compute(original);
+                    break;
+            }
+            System.out.println("Finished imputation.");
+
+            if (commands.hasOption("accuracy"))
+            {
+                //double acc = accuracy(unmasked,imputed,mask);
+                double acc = mask.accuracy(unmasked,imputed);
+                System.out.println("Accuracy: " + acc);
+            }
+            else
+            {
+                switch (fileFormat)
+                {
+                    case 'v':
+                        writeVCFResult(new File (out), imputed, vcf);
+                        break;
+                    case 'a':
+                        writeArrayResult(new File(out), imputed);
+                        break;
+                    case 'p':
+                    default:
+                        writePlinkResult(new File(out), imputed, pn);
+                        break;
+                }
+            }
+        }
+        else
+        {
+            System.out.println("Not performing imputation (--noimpute option given)");
         }
     }
     
@@ -497,6 +691,42 @@ public class LinkImpute
             out.println();
         }
         out.close();
+    }
+    
+    private static void writeLD(File f, Map<Integer,List<Integer>> data) throws IOException
+    {
+        PrintStream out = new PrintStream(new FileOutputStream(f));
+        
+        for (Entry<Integer,List<Integer>> d: data.entrySet())
+        {
+            out.print(d.getKey());
+            for (Integer i: d.getValue())
+            {
+                out.print("\t");
+                out.print(i);
+            }
+            out.println();
+        }
+        out.close();
+    }
+    
+    private static Map<Integer,List<Integer>> readLD(File f) throws IOException
+    {
+        BufferedReader in = new BufferedReader(new FileReader(f));
+        String line;
+        Map<Integer,List<Integer>> data = new HashMap<>();
+        while ((line = in.readLine()) != null)
+        {
+            String[] parts = line.split("\t");
+            List<Integer> set = new ArrayList<>();
+            for (int i = 1; i < parts.length; i++)
+            {
+                set.add(Integer.valueOf(parts[i]));
+            }
+            data.put(Integer.valueOf(parts[0]),set);
+        }
+        in.close();
+        return data;
     }
     
     private static class OptionOrder implements Comparator<Option>
