@@ -1,12 +1,13 @@
 package Files.VCF;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -97,19 +98,10 @@ public class VCF
     
     public void writeFile(File f) throws FileNotFoundException, IOException
     {
-        PrintStream out;
-        try
-        {
-            out = new PrintStream(new FileOutputStream(f));
-        }
-        catch (FileNotFoundException e)
-        {
-            //Should probably do something better here!
-            throw e;
-        }
-        
-        meta.toStream(out);
-        data.toStream(out);
+        PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f)));
+       
+        meta.toWriter(out);
+        data.toWriter(out);
 
         out.close();
     }

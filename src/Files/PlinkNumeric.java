@@ -22,11 +22,12 @@ import Exceptions.RepeatedSNPException;
 import Exceptions.RepeatedSampleException;
 import Exceptions.WrongNumberOfSNPsException;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -295,7 +296,7 @@ public class PlinkNumeric
      */
     public void writeToFile(File f) throws IOException
     {
-        PrintStream out = new PrintStream(new FileOutputStream(f));
+        PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f)));
         
         boolean first = true;
         for (String mh: metahead)
@@ -352,7 +353,7 @@ public class PlinkNumeric
      */
     public void writeToFastPhase(File f) throws IOException
     {
-        PrintStream out = new PrintStream(new FileOutputStream(f));
+        PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f)));
         
         out.println(samples.size());
         out.println(SNPs.size());

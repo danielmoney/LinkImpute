@@ -1,7 +1,7 @@
 package Files.VCF;
 
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -210,7 +210,7 @@ public class Data
         samples.remove(pos);
     }
     
-    public void toStream(PrintStream out) throws IOException
+    public void toWriter(PrintWriter out) throws IOException
     {
         StringBuilder temp = new StringBuilder();
         /*out.print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT");

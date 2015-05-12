@@ -1,6 +1,6 @@
 package Files.VCF;
 
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -15,7 +15,7 @@ public class Meta
         this.other = other;
     }
     
-    public void toStream(PrintStream out)
+    public void toWriter(PrintWriter out)
     {
         for (String o: other)
         {
