@@ -17,6 +17,7 @@
 
 package Correlation;
 
+import Utils.Progress;
 import Utils.TopQueue;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,9 +61,9 @@ public abstract class Correlation
         return result;
     }
     
-    //public Map<Integer,Set<Integer>> topn(byte[][] data, int n)
     public Map<Integer,List<Integer>> topn(byte[][] data, int n)
     {
+        Progress progress = new Progress(data.length * (data.length - 1) / 2);
         Map<Integer,TopQueue<Integer,Double>> work = new HashMap<>();
         for (int i = 0; i < data.length; i++)
         {
@@ -73,30 +74,17 @@ public abstract class Correlation
         List<Single> parts = new ArrayList<>();
         for (int i = 0; i < data.length; i++)
         {
-            parts.add(new Single(data,work,i));
-            //es.submit(new Single(data,work,i));
-            /*for (int j = i + 1; j < data.length; j++)
-            {
-                double v = calculate(data[i], data[j]);
-                work.get(i).add(j, v);
-                work.get(j).add(i, v);
-            }*/
+            parts.add(new Single(data,work,i,progress));
         }
         try
         {
             es.invokeAll(parts);
             es.shutdown();
-            //es.awaitTermination(1, TimeUnit.HOURS);
         }
         catch (InterruptedException ex)
         {
             //NEED TO DEAL WITH THIS!
         }
-        /*Map<Integer,Set<Integer>> result = new HashMap<>();
-        for (Entry<Integer,TopQueue<Integer,Double>> e: work.entrySet())
-        {
-            result.put(e.getKey(),e.getValue().getSet());
-        }*/
         Map<Integer,List<Integer>> result = new HashMap<>();
         for (Entry<Integer,TopQueue<Integer,Double>> e: work.entrySet())
         {
@@ -107,16 +95,16 @@ public abstract class Correlation
     
     public abstract double calculate(byte[] d1, byte[] d2);
     
-    private class Single implements Callable<Void>//Runnable
+    private class Single implements Callable<Void>
     {
-        public Single(byte[][] data, Map<Integer,TopQueue<Integer,Double>> work, int i)
+        public Single(byte[][] data, Map<Integer,TopQueue<Integer,Double>> work, int i, Progress progress)
         {
             this.data = data;
             this.work = work;
             this.i = i;
+            this.progress = progress;
         }
         
-        //public void run()
         public Void call()
         {
             for (int j = i + 1; j < data.length; j++)
@@ -125,13 +113,11 @@ public abstract class Correlation
                 work.get(i).add(j, v);
                 work.get(j).add(i, v);
             }
-            if (((i + 1) % 100) == 0)
-            {
-                System.out.println("\tDone " + (i + 1));
-            }
+            progress.done(data.length - i - 1);
             return null;
         }
         
+        private final Progress progress;
         private final int i;
         private final byte[][] data;
         private final Map<Integer,TopQueue<Integer,Double>> work;
