@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
 import java.util.TreeSet;
 
 public class TopQueue<E, V extends Comparable>
@@ -37,27 +36,7 @@ public class TopQueue<E, V extends Comparable>
             return true;
         }
     }
-    
-    /*public NavigableSet<E> getSet()
-    {
-        return set;
-    }
-    
-    public NavigableSet<E> getSet(int n)
-    {
-        E lim = null;
-        int c = 0;
-        for (E e: set)
-        {
-            c++;
-            if (c == n)
-            {
-                lim = e;
-            }
-        }
-        return set.headSet(lim, true);
-    }*/
-    
+   
     public List<E> getList()
     {
         List<E> list = new ArrayList<>(top);
@@ -112,11 +91,11 @@ public class TopQueue<E, V extends Comparable>
             }
             else
             {
-                if ((e1 instanceof Comparable) && (e2 instanceof Comparable))
+                if (e1 instanceof Comparable) // && (e2 instanceof Comparable))
                 {
-                    Comparable c1 = (Comparable) e1;
-                    Comparable c2 = (Comparable) e2;
-                    return c1.compareTo(c2);
+                    Comparable<? super E> c1 = (Comparable<? super E>) e1;
+                    //Comparable<? super E> c2 = (Comparable<? super E>) e2;
+                    return c1.compareTo(e2);
                 }
                 else
                 {
