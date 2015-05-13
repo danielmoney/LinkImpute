@@ -19,8 +19,13 @@ package Methods;
 
 import Exceptions.NotEnoughGenotypesException;
 import Exceptions.WrongNumberOfSNPsException;
-import Utils.BufferByteArray;
+import Mask.Mask;
 import Utils.SortByIndexDouble;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Class to perform standard kNNi imputation
@@ -57,20 +62,12 @@ public class Knni
      */
     public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
-        // Convert the data to BufferByteArrays for calculating the weights - see
-        // BufferByteAray for more on this
-        BufferByteArray[] o = new BufferByteArray[original.length];
-        for (int i = 0; i < original.length; i++)
-        {
-            o[i] = new BufferByteArray(original[i]);
-        }
-        
-        return compute(original, weight(o));
+        return compute(original, weight(original));
     }
     
     // Written as a seperate function to allow possible future expansion with
     // a different distance function
-    private byte[][] compute(byte[][] original, double[][] d) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    public byte[][] compute(byte[][] original, double[][] d) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
         // Comment out code to catch a possible error as this can only happen with
         // a user passed distance matrix and at the moment this function is private
@@ -151,34 +148,74 @@ public class Knni
         return 2;
     }
     
-    private double[][] weight(BufferByteArray[] values) throws WrongNumberOfSNPsException
+    public double fastAccuracy(byte[][] original, Mask mask) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
-        //Calculate the weights for every pair of samples
-        double[][] ret = new double[values.length][values.length];
-        for (int i = 0; i < values.length; i++)
-        {
-            for (int j = i + 1; j < values.length; j++)
-            {
-                double sd = sweight(values[i], values[j]);
-                ret[i][j] = sd;
-                ret[j][i] = sd;
-            }
-            ret[i][i] = 0.0;
-        }
-        return ret;
+        return fastAccuracy(original, mask, weight(original));
     }
     
-    private double sweight(BufferByteArray v1, BufferByteArray v2) throws WrongNumberOfSNPsException
+    public double fastAccuracy(byte[][] original, Mask mask, double[][] w) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    {
+        boolean[][] maskA = mask.getArray();
+        int correct = 0;
+        int total = 0;        
+        
+        for (int i = 0; i < maskA.length; i++)
+        {
+            boolean[] m = maskA[i];
+            for (int j = 0; j < m.length; j++)
+            {
+                if (m[j])
+                {
+                    SortByIndexDouble si = new SortByIndexDouble(w[i],true);
+                    Integer[] indicies = si.sort();
+                    
+                    byte imputed = impute(j ,original, indicies, w[i]);
+                    if (imputed == original[i][j])
+                    {
+                        correct++;
+                    }
+                    total++;
+                }
+            }
+        }
+        
+        return (double) correct / (double) total;
+    }
+    
+    public static double[][] weight(byte[][] values)
+    {
+        ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        double[][] result = new double[values.length][values[0].length];
+        
+        List<Single> parts = new ArrayList<>();
+        for (int i = 0; i < values.length; i++)
+        {
+            parts.add(new Single(values,result,i));
+        }
+        try
+        {
+            es.invokeAll(parts);
+            es.shutdown();
+            //es.awaitTermination(1, TimeUnit.HOURS);
+        }
+        catch (InterruptedException ex)
+        {
+            //NEED TO DEAL WITH THIS!
+        }
+        return result;
+    }
+    
+    private static double sweight(byte[] v1, byte[] v2) throws WrongNumberOfSNPsException
     {
         //Calculate the weight for a single pair of samples
-        if (v1.size() == v2.size())
+        if (v1.length == v2.length)
         {
             int d = 0;
             int c = 0;
-            for (int i = 0; i < v1.size(); i++)
+            for (int i = 0; i < v1.length; i++)
             {
-                int p1 = v1.get(i);
-                int p2 = v2.get(i);                
+                int p1 = v1[i];
+                int p2 = v2[i];                
                 if ((p1 != -1) && (p2 != -1))
                 {
                     // Count how many snps we use in the calculation for weighting
@@ -190,7 +227,7 @@ public class Knni
                 }
             }
             // Return a scaled weight
-            return 1.0 / ((double) d * (double) v1.size() / (double) c);
+            return 1.0 / ((double) d * (double) v1.length / (double) c);
         }
         else
         {
@@ -203,4 +240,38 @@ public class Knni
     
     // How many neighbours to use
     private int k;
+    
+    private static class Single implements Callable<Void>//Runnable
+    {
+        public Single(byte[][] data, double[][] res, int i)
+        {
+            this.data = data;
+            this.res = res;
+            this.i = i;
+        }
+        
+        //public void run()
+        public Void call()
+        {
+            for (int j = i + 1; j < data.length; j++)
+            {
+                try
+                {
+                    double v = sweight(data[i], data[j]);
+                    res[i][j] = v;
+                    res[j][i] = v;
+                }
+                catch (WrongNumberOfSNPsException ex)
+                {
+                    //Should never get here!
+                }
+
+            }
+            return null;
+        }
+        
+        private final int i;
+        private final byte[][] data;
+        private final double[][] res;
+    }
 }

@@ -17,6 +17,10 @@
 
 package Methods;
 
+import Exceptions.NotEnoughGenotypesException;
+import Exceptions.WrongNumberOfSNPsException;
+import Mask.Mask;
+
 /**
  * Class to perform Mode imputation
  * @author Daniel Money
@@ -93,5 +97,54 @@ public class Mode
         
         return ret;
     }
+    
+    public double fastAccuracy(byte[][] original, Mask mask) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    {
+        boolean[][] maskA = mask.getArray();
+        int correct = 0;
+        int total = 0;
+        
+        for (int i = 0; i < maskA.length; i++)
+        {
+            boolean[] m = maskA[i];
+            for (int j = 0; j < m.length; j++)
+            {
+                if (m[j])
+                {
+                    byte imputed = impute(original, j);
+                    if (imputed == original[i][j])
+                    {
+                        correct++;
+                    }
+                    total++;
+                }
+            }
+        }
+        
+        return (double) correct / (double) total;
+    }
 
+    private byte impute(byte[][] original, int p)
+    {
+        int[] count = new int[3];
+        for (int j = 0; j < original.length; j++)
+        {
+            if (original[j][p] >= 0)
+            {
+                count[original[j][p]]++;
+            }
+        }
+        
+        byte mi = 0;
+        int mv = 0;
+        for (byte j = 0; j < 3; j++)
+        {
+            if (count[j] > mv)
+            {
+                mi = j;
+                mv = count[j];
+            }
+        }
+        return mi;
+    }
 }
