@@ -37,6 +37,16 @@ public class Pearson extends Correlation
             }
         }
         
+        // If we have an invariant site then xx or yy will be zero, in which
+        // case return a correlation of zero.  This ensures invariant sites are
+        // sorted to the bottom of the list of LD sites and so aren't used in
+        // distance calculations (which makes sense since they add no information
+        // to the distance.
+        if ((xx == 0.0) || (yy == 0.0))
+        {
+            return 0;
+        }
+        
         return (xy * xy) / (xx * yy);
     }
 }
