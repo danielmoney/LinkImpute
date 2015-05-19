@@ -1,5 +1,10 @@
 package Files.VCF;
 
+import Files.VCF.Mappers.ByteMapper;
+import Files.VCF.Mappers.DoubleMapper;
+import Files.VCF.Mappers.IntegerMapper;
+import Files.VCF.Mappers.Mapper;
+import Files.VCF.Mappers.StringMapper;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -94,7 +99,8 @@ public class Data
         return ret;
     }*/
     
-    public byte[][] asArray(FormatDefinition f, Map<String,Byte> map)
+    //public byte[][] asByteArray(FormatDefinition f, Map<String,Byte> map)
+    public byte[][] asByteArray(FormatDefinition f, ByteMapper mapper)
     {
         byte[][] array = new byte[samples.size()][data.size()];
         
@@ -105,7 +111,8 @@ public class Data
             byte[][] pdata = data.get(p);
             for (int i=0; i < pdata.length; i++)
             {
-                array[si][pi] = map.get(retrieve(pdata[i], p.getFormat(), f));
+                //array[si][pi] = map.get(retrieve(pdata[i], p.getFormat(), f));
+                array[si][pi] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
                 si++;
             }
             pi++;
@@ -114,7 +121,8 @@ public class Data
         return array;
     }
     
-    public byte[][] asArrayTransposed(FormatDefinition f, Map<String,Byte> map)
+    //public byte[][] asByteArrayTransposed(FormatDefinition f, Map<String,Byte> map)
+    public byte[][] asByteArrayTransposed(FormatDefinition f, ByteMapper mapper)
     {
         byte[][] array = new byte[data.size()][samples.size()];
         
@@ -125,7 +133,8 @@ public class Data
             byte[][] pdata = data.get(p);
             for (int i=0; i < pdata.length; i++)
             {
-                array[pi][si] = map.get(retrieve(pdata[i], p.getFormat(), f));
+                //array[pi][si] = map.get(retrieve(pdata[i], p.getFormat(), f));
+                array[pi][si] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
                 si++;
             }
             pi++;
@@ -133,6 +142,176 @@ public class Data
         
         return array;
     }
+    
+    public int[][] asIntArray(FormatDefinition f, IntegerMapper mapper)
+    {
+        int[][] array = new int[samples.size()][data.size()];
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[si][pi] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }
+    
+    public int[][] asIntArrayTransposed(FormatDefinition f, IntegerMapper mapper)
+    {
+        int[][] array = new int[data.size()][samples.size()];
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[pi][si] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }
+    
+    public double[][] asDoubleArray(FormatDefinition f, DoubleMapper mapper)
+    {
+        double[][] array = new double[samples.size()][data.size()];
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[si][pi] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }
+    
+    public double[][] asDoubleArrayTransposed(FormatDefinition f, DoubleMapper mapper)
+    {
+        double[][] array = new double[data.size()][samples.size()];
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[pi][si] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }
+    
+    public String[][] asStringArray(FormatDefinition f)
+    {
+        return asStringArray(f,new IdentityStringMapper());
+    }
+    
+    public String[][] asStringArray(FormatDefinition f, StringMapper mapper)
+    {
+        String[][] array = new String[samples.size()][data.size()];
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[si][pi] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }
+    
+    public String[][] asStringArrayTransposed(FormatDefinition f)
+    {
+        return asStringArrayTransposed(f, new IdentityStringMapper());
+    }
+    
+    public String[][] asStringArrayTransposed(FormatDefinition f, StringMapper mapper)
+    {
+        String[][] array = new String[data.size()][samples.size()];
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[pi][si] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }
+    
+    public <V> V[][] asArray(FormatDefinition f, Mapper<V> mapper)
+    {
+        V[][] array = mapper.getArray(samples.size(),data.size());
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[si][pi] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }
+    
+    public <V> V[][] asArrayTransposed(FormatDefinition f, Mapper<V> mapper)
+    {
+        V[][] array = mapper.getArray(data.size(),samples.size());
+        
+        int pi = 0;
+        for (Position p: positions)
+        {
+            int si = 0;
+            byte[][] pdata = data.get(p);
+            for (int i=0; i < pdata.length; i++)
+            {
+                array[pi][si] = mapper.map(retrieve(pdata[i], p.getFormat(), f));
+                si++;
+            }
+            pi++;
+        }
+        
+        return array;
+    }    
     
     public void removePosition(Position p)
     {
@@ -401,7 +580,15 @@ public class Data
         }
         return n;
     }
-            
+    
+    
+    private class IdentityStringMapper implements StringMapper
+    {
+        public String map(String s)
+        {
+            return s;
+        }
+    }
     
     private List<Position> positions;
     private ArrayList<String> samples;
