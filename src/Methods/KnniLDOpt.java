@@ -8,23 +8,13 @@ import java.util.Map;
 
 public class KnniLDOpt implements Value
 {
-    public KnniLDOpt(byte[][] orig, Mask mask, Map<Integer,List<Integer>> sim)
-    {
-        this(new BufferByteArray2D(orig),mask,sim,false);
-    }
     
-    public KnniLDOpt(byte[][] orig, Mask mask, Map<Integer,List<Integer>> sim,
-            boolean verbose)
-    {
-        this(new BufferByteArray2D(orig),mask,sim,false);
-    }
-    
-    public KnniLDOpt(BufferByteArray2D ob, Mask mask, Map<Integer,List<Integer>> sim)
+    public KnniLDOpt(byte[][] ob, Mask mask, Map<Integer,List<Integer>> sim)
     {
         this(ob,mask,sim,false);
     }
     
-    public KnniLDOpt(BufferByteArray2D ob, Mask mask, Map<Integer,List<Integer>> sim,
+    public KnniLDOpt(byte[][] ob, Mask mask, Map<Integer,List<Integer>> sim,
             boolean verbose)
     {
         this.ob = ob;
@@ -57,7 +47,7 @@ public class KnniLDOpt implements Value
         return v;
     }
     
-    private BufferByteArray2D ob;
+    private byte[][] ob;
     private Mask mask;
     private Map<Integer,List<Integer>> sim;
     private boolean verbose;

@@ -267,7 +267,7 @@ public class LinkImpute
                 break;
         }
         
-        BufferByteArray2D ob = new BufferByteArray2D(original);
+        //BufferByteArray2D ob = new BufferByteArray2D(original);
 
         System.out.println("\tRead in data set of " + original.length + " samples and " +
             original[0].length + " SNPs.");
@@ -391,10 +391,10 @@ public class LinkImpute
                     System.out.println("Starting optimizing parameters...");
                     partstart = System.currentTimeMillis();
                     //KnniLDOpt knnildopt = new KnniLDOpt(original,mask,ld,verbose);
-                    KnniLDOpt knnildopt = new KnniLDOpt(ob,mask,ld,verbose);
+                    KnniLDOpt knnildopt = new KnniLDOpt(original,mask,ld,verbose);
                     //NEED TO SORT THIS!
                     int[] startmaxld = {9,17};
-                    int[] absmaxld = {ob.size(),ld.get(0).size()};
+                    int[] absmaxld = {original.length,ld.get(0).size()};
                     Optimize ol = new Optimize(knnildopt,startmaxld,absmaxld);
                     if (!verbose)
                     {
@@ -421,7 +421,7 @@ public class LinkImpute
                     KnniLD knnild = new KnniLD(ld,5,
                             20);
                     //imputed = knnild.compute(original);
-                    imputed = knnild.compute(ob);
+                    imputed = knnild.compute(original);
                     if (verbose)
                     {
                         long time = (System.currentTimeMillis() - partstart) / 1000;

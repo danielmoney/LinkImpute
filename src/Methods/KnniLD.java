@@ -111,7 +111,7 @@ public class KnniLD
      * every sample
      * imputation
      */
-    /*public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
         Progress progress = new Progress(original.length);
         ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
@@ -147,9 +147,9 @@ public class KnniLD
         
         es.shutdown();
         return imputed;
-    }*/
+    }
     
-    public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    /*public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
         return compute(new BufferByteArray2D(original));
     }
@@ -198,9 +198,9 @@ public class KnniLD
         
         es.shutdown();
         return imputed;
-    }
+    }*/
     
-    /*private byte impute(int s, int p, byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    private byte impute(int s, int p, byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
         //Calculate the distance to other samples for this snp / sample combination
         double[] dist = dist(s,p,original);
@@ -245,9 +245,9 @@ public class KnniLD
             return 1;
         }
         return 2;
-    }*/
+    }
     
-    private byte impute(int s, int p, BufferByteArray2D original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    /*private byte impute(int s, int p, BufferByteArray2D original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
         //Calculate the distance to other samples for this snp / sample combination
         double[] dist = dist(s,p,original);
@@ -293,9 +293,9 @@ public class KnniLD
             return 1;
         }
         return 2;
-    }
+    }*/
     
-    /*private double[] dist(int s, int p, byte[][] values) throws WrongNumberOfSNPsException
+    private double[] dist(int s, int p, byte[][] values) throws WrongNumberOfSNPsException
     {
         //Simply loops round the other samples, catching the case where it's
         //the current sample
@@ -314,9 +314,9 @@ public class KnniLD
             }
         }
         return ret;
-    }*/
+    }
     
-    private double[] dist(int s, int p, BufferByteArray2D values) throws WrongNumberOfSNPsException
+    /*private double[] dist(int s, int p, BufferByteArray2D values) throws WrongNumberOfSNPsException
     {
         //Simply loops round the other samples, catching the case where it's
         //the current sample
@@ -335,9 +335,9 @@ public class KnniLD
             }
         }
         return ret;
-    }
+    }*/
     
-    /*private double sdist(byte[] v1, byte[] v2, int p) throws WrongNumberOfSNPsException
+    private double sdist(byte[] v1, byte[] v2, int p) throws WrongNumberOfSNPsException
     {
         if (v1.length == v2.length)
         {
@@ -382,9 +382,9 @@ public class KnniLD
             //currently not too informative
             throw new WrongNumberOfSNPsException("Unknown");
         }        
-    }*/
+    }
     
-    private double sdist(BufferByteArray2D values, int v1, int v2, int p) throws WrongNumberOfSNPsException
+    /*private double sdist(BufferByteArray2D values, int v1, int v2, int p) throws WrongNumberOfSNPsException
     {
         int d = 0;
         int c = 0;
@@ -419,9 +419,9 @@ public class KnniLD
         {
             return ((double) d * (double) l / (double) c) + 1.0;
         }
-    }
+    }*/
     
-    /*public double fastAccuracy(byte[][] original, Mask mask)
+    public double fastAccuracy(byte[][] original, Mask mask)
     {
         boolean[][] maskA = mask.getArray();
         //List<SampleSnp> fullList = mask.getList();
@@ -441,7 +441,7 @@ public class KnniLD
             {
                 if (m[j])
                 {
-                    lists.get(ct).add(new SampleSnp(i,j,original[i][j]));
+                    lists.get(ct).add(new SampleSnp(i,j));
                     ct = (ct + 1) % nt;
                     cm ++;
                 }
@@ -481,9 +481,9 @@ public class KnniLD
         
         return (double) cc / (double) cm;
         //return (double) cc / (double) fullList.size();
-    }*/
+    }
     
-    public double fastAccuracy(byte[][] original, Mask mask)
+    /*public double fastAccuracy(byte[][] original, Mask mask)
     {
         return fastAccuracy(new BufferByteArray2D(original),mask);
     }
@@ -501,19 +501,6 @@ public class KnniLD
         }
         int ct = 0;
         int cm = 0;
-        /*for (int i = 0; i < maskA.length; i++)
-        {
-            boolean[] m = maskA[i];
-            for (int j = 0; j < m.length; j++)
-            {
-                if (m[j])
-                {
-                    lists.get(ct).add(new SampleSnp(i,j));//,ob.get(i, j)));
-                    ct = (ct + 1) % nt;
-                    cm ++;
-                }
-            }
-        }*/
         for (SampleSnp ss: mask.getList())
         {
                     lists.get(ct).add(ss);//,ob.get(i, j)));
@@ -555,9 +542,9 @@ public class KnniLD
         //return (double) cc / (double) cm;
         return (double) cc / (double) mask.getList().size();
         //return (double) cc / (double) fullList.size();
-    }
+    }*/
     
-    /*private class Part implements Callable<Void>
+    private class Part implements Callable<Void>
     {
         public Part(byte[][] original, byte[] imputed,
                 int s, int start, int end)
@@ -591,9 +578,9 @@ public class KnniLD
         private final int end;
         private final byte[] imputed;
         private final byte[][] original;
-    }*/
+    }
     
-    private class Part implements Callable<Void>
+    /*private class Part implements Callable<Void>
     {
         public Part(BufferByteArray2D original, byte[] imputed,
                 int s, int start, int end)
@@ -628,9 +615,9 @@ public class KnniLD
         private final int end;
         private final byte[] imputed;
         private final BufferByteArray2D original;
-    }
+    }*/
     
-    /*private class FastPart implements Callable<Integer>
+    private class FastPart implements Callable<Integer>
     {
         //public Part(byte[][] original, byte[] imputed, BufferByteArray[] o,
         public FastPart(byte[][] orig, List<SampleSnp> todo)
@@ -645,7 +632,7 @@ public class KnniLD
             for (SampleSnp ss: todo)
             {                
                 byte imp = impute(ss.getSample(), ss.getSnp(), orig);
-                if (imp == ss.getOriginal())
+                if (imp == orig[ss.getSample()][ss.getSnp()])
                 {
                     c++;
                 }
@@ -655,9 +642,9 @@ public class KnniLD
         
         private final List<SampleSnp> todo;
         private final byte[][] orig;
-    }*/
+    }
     
-    private class FastPart implements Callable<Integer>
+    /*private class FastPart implements Callable<Integer>
     {
         public FastPart(BufferByteArray2D orig, List<SampleSnp> todo)
         {
@@ -682,7 +669,7 @@ public class KnniLD
         
         private final List<SampleSnp> todo;
         private final BufferByteArray2D orig;
-    }
+    }*/
     
     Integer[] samporder;
     Integer[][] sim;
