@@ -1,4 +1,4 @@
-package Files.VCF;
+package Files.VCFData;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

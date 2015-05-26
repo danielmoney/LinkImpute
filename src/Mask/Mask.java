@@ -1,3 +1,19 @@
+/*
+ * This file is part of LinkImpute.
+ * 
+ * LinkImpute is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * LinkImpute is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with LinkImpute.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package Mask;
 
 import java.io.BufferedReader;
@@ -11,8 +27,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Represents a mask for calculating imputation accuracy.  Contains data on
+ * which genotypes should be masked.
+ * @author Daniel Money
+ */
 public class Mask
 {
+
+    /**
+     * Creates a mask from file.
+     * @param f The file to read the mask from
+     * @throws IOException If there are problems reading the file
+     */
     public Mask(File f) throws IOException
     {
         BufferedReader in = new BufferedReader(new FileReader(f));
@@ -41,6 +68,11 @@ public class Mask
         mask = masklist.toArray(mask);
     }
     
+    /**
+     * Creates a mask for a dataset
+     * @param orig The original dataset
+     * @param number The number of genotypes to mask
+     */
     public Mask(byte[][] orig, int number)
     {
         Random r = new Random();
@@ -62,6 +94,11 @@ public class Mask
         list = null;
     }
     
+    /**
+     * Returns a list of masked genotypes.  List is only created when this
+     * function is first called to save memory.
+     * @return A list of masked genotypes
+     */
     public List<SampleSnp> getList()
     {
         if (list == null)
@@ -82,6 +119,12 @@ public class Mask
         return list;
     }
     
+    /**
+     * Calculates imputation accuracy
+     * @param orig The original, unmasked dataset
+     * @param imputed The imputed dataset (imputed on masked data)
+     * @return Imputation accuracy
+     */
     public double accuracy(byte[][] orig, byte[][] imputed)
     {
         int c = 0;
@@ -104,11 +147,20 @@ public class Mask
         return (double) c / (double) t;
     }
     
+    /**
+     * Returns an array of masked genotypes (true = masked, false = unmasked).
+     * @return An array of masked genotypes.
+     */
     public boolean[][] getArray()
     {
         return mask;
     }
     
+    /**
+     * Creates a masked array using this mask
+     * @param orig Array to be masked
+     * @return Masked array
+     */
     public byte[][] mask(byte[][] orig)
     {
         int al = orig.length;
@@ -132,6 +184,11 @@ public class Mask
         return masked;
     }
     
+    /**
+     * Saves this mask to a file
+     * @param f File to save to
+     * @throws IOException If there are problems writing the file
+     */
     public void saveToFile(File f) throws IOException
     {
         PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f)));

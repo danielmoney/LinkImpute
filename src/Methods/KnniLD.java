@@ -21,7 +21,6 @@ import Exceptions.NotEnoughGenotypesException;
 import Exceptions.WrongNumberOfSNPsException;
 import Mask.Mask;
 import Mask.SampleSnp;
-import Utils.BufferByteArray2D;
 import Utils.Progress;
 import Utils.SortByIndexDouble;
 import java.util.ArrayList;

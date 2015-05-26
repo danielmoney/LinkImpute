@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-public class TopQueue<E, V extends Comparable>
+public class TopQueue<E extends Comparable<E>, V extends Comparable<V>>
 {
     public TopQueue(int top)
     {
@@ -67,7 +67,7 @@ public class TopQueue<E, V extends Comparable>
         return map;
     }
     
-    private class Compare<E,V extends Comparable<V>> implements Comparator<E>
+    private class Compare<E extends Comparable<E>,V extends Comparable<V>> implements Comparator<E>
     {
         public Compare(Map<E,V> map, boolean reverse)
         {
@@ -91,7 +91,7 @@ public class TopQueue<E, V extends Comparable>
             }
             else
             {
-                if (e1 instanceof Comparable) // && (e2 instanceof Comparable))
+                /*if (e1 instanceof Comparable) // && (e2 instanceof Comparable))
                 {
                     Comparable<? super E> c1 = (Comparable<? super E>) e1;
                     //Comparable<? super E> c2 = (Comparable<? super E>) e2;
@@ -100,7 +100,8 @@ public class TopQueue<E, V extends Comparable>
                 else
                 {
                     return 0;
-                }
+                }*/
+                return e1.compareTo(e2);
             }
         }
         

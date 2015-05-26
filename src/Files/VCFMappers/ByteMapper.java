@@ -1,4 +1,4 @@
-package Files.VCF.Mappers;
+package Files.VCFMappers;
 
 public interface ByteMapper
 {

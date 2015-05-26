@@ -29,11 +29,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Class of static methods to calculate LD
+ * Abstract class for calculating LD.  Calculating the LD between two SNPs is
+ * left for implementing classes while this class deals with the all-against-all
+ * mechanisms.
  * @author Daniel Money
  */
 public abstract class Correlation
 {
+
+    /**
+     * Deafult constructor
+     */
     protected Correlation()
     {        
     }
@@ -61,6 +67,15 @@ public abstract class Correlation
         return result;
     }
     
+    /**
+     * Calculates all-against-all LD and returns the top n sites most in LD with
+     * each site.
+     * @param data The data to calculate LD for.  SNPs are indexed by the first
+     * position of the array, samples by the second.  For example data[1][2] would be
+     * SNP 1 and sample 2.
+     * @param n number of top hits to return per site
+     * @return A map from site to ordered list of sites most in LD
+     */
     public Map<Integer,List<Integer>> topn(byte[][] data, int n)
     {
         Progress progress = new Progress(data.length * (data.length - 1) / 2);
@@ -93,6 +108,12 @@ public abstract class Correlation
         return result;
     }
     
+    /**
+     * Calculates LD between two SNPs
+     * @param d1 SNP 1 genotype
+     * @param d2 SNP 2 genotype
+     * @return LD between the two SNPs
+     */
     public abstract double calculate(byte[] d1, byte[] d2);
     
     private class Single implements Callable<Void>

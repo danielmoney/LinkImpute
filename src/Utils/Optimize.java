@@ -130,7 +130,7 @@ public class Optimize
         double uvalue = value(pos,ubracket,vv);
         double mvalue = value(pos,mbracket,vv);
 
-        while ((uvalue > mvalue) && (mvalue > lvalue) && (ubracket >= absmax[pos]))
+        while ((uvalue > mvalue) && (mvalue > lvalue) && (ubracket <= absmax[pos]))
         {
             mbracket = ubracket;
             mvalue = uvalue;

@@ -1,4 +1,4 @@
-package Files.VCF;
+package Files.VCFData;
 
 public enum DataType
 {

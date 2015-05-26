@@ -1,10 +1,10 @@
-package Files.VCF;
+package Files.VCFData;
 
-import Files.VCF.Mappers.ByteMapper;
-import Files.VCF.Mappers.DoubleMapper;
-import Files.VCF.Mappers.IntegerMapper;
-import Files.VCF.Mappers.Mapper;
-import Files.VCF.Mappers.StringMapper;
+import Files.VCFMappers.ByteMapper;
+import Files.VCFMappers.DoubleMapper;
+import Files.VCFMappers.IntegerMapper;
+import Files.VCFMappers.Mapper;
+import Files.VCFMappers.StringMapper;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;

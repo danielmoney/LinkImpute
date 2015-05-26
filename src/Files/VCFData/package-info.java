@@ -19,4 +19,4 @@
  * Provides classes for dealing with VCF files.  Currently experimental and not
  * documented.
  */
-package Files.VCF;
+package Files.VCFData;

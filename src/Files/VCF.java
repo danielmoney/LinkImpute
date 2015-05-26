@@ -1,5 +1,12 @@
-package Files.VCF;
+package Files;
 
+import Files.VCFData.Data;
+import Files.VCFData.DataType;
+import Files.VCFData.FilterDefinition;
+import Files.VCFData.FormatDefinition;
+import Files.VCFData.InfoDefinition;
+import Files.VCFData.Meta;
+import Files.VCFData.Position;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;

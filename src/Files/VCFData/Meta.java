@@ -1,4 +1,4 @@
-package Files.VCF;
+package Files.VCFData;
 
 import java.io.PrintWriter;
 import java.util.HashSet;

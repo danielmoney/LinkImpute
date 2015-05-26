@@ -1,4 +1,4 @@
-package Files.VCF;
+package Files.VCFData;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,7 +112,7 @@ public class Position
         return position;
     }
 
-    protected void addFormat(FormatDefinition fd)
+    public void addFormat(FormatDefinition fd)
     {
         format.add(fd);
     }
