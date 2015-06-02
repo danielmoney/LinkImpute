@@ -113,7 +113,7 @@ public class KnniLD
     public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
         Progress progress = new Progress(original.length);
-        ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        //ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
         byte[][] imputed = new byte[original.length][];
 
@@ -425,7 +425,7 @@ public class KnniLD
         boolean[][] maskA = mask.getArray();
         //List<SampleSnp> fullList = mask.getList();
         
-        int nt = Runtime.getRuntime().availableProcessors();
+        //int nt = Runtime.getRuntime().availableProcessors();
         List<List<SampleSnp>> lists = new ArrayList<>(nt);
         for (int t = 0; t < nt; t++)
         {
@@ -459,8 +459,6 @@ public class KnniLD
             parts.add(new FastPart(original,l));
         }
         
-        ExecutorService es = Executors.newFixedThreadPool(nt);
-        
         int cc = 0;
         try
         {
@@ -476,7 +474,7 @@ public class KnniLD
             //NEED TO DEAL WITH THIS PROPERLY
         }
         
-        es.shutdown();
+        //es.shutdown();
         
         return (double) cc / (double) cm;
         //return (double) cc / (double) fullList.size();
@@ -674,4 +672,7 @@ public class KnniLD
     Integer[][] sim;
     private int k;
     private int l;
+    
+    private static final int nt = Runtime.getRuntime().availableProcessors();
+    private static final ExecutorService es = Executors.newFixedThreadPool(nt);
 }

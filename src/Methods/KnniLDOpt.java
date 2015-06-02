@@ -34,10 +34,12 @@ public class KnniLDOpt implements Value
     {
         KnniLD knnild = new KnniLD(sim,p[0],p[1]);
         //double v = knnild.fastAccuracy(orig, mask);
+        long start = System.currentTimeMillis();
         double v = knnild.fastAccuracy(ob, mask);
+        long time = (System.currentTimeMillis() - start) / 1000;
         if (verbose)
         {
-            System.out.println("\t" + p[0] + "\t" + p[1] + "\t" + v);
+            System.out.println("\t" + p[0] + "\t" + p[1] + "\t" + v + "\t\t(" + time + " seconds)");
         }
         else
         {
