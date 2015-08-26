@@ -1,110 +1,38 @@
+/*
+ * This file is part of LinkImpute.
+ * 
+ * LinkImpute is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * LinkImpute is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with LinkImpute.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package Utils;
 
 import java.util.Arrays;
 
+/**
+ * Optimizes integer parameter values.  There are probably better ways of doing
+ * this!
+ * @author Daniel Money
+ */
 public class Optimize
 {
-    /*public Optimize(Value v, int startmax) throws Exception
-    {
-        int lbracket = 1;
-        int ubracket = Math.max(3,Integer.highestOneBit(startmax-2) * 2 + 1);
-        int mbracket = (lbracket + ubracket) / 2;
-        
-        double lvalue = v.value(lbracket);
-        double uvalue = v.value(ubracket);
-        double mvalue = v.value(mbracket);
-        
-        while ((uvalue > mvalue) && (mvalue > lvalue))
-        {
-            mbracket = ubracket;
-            mvalue = uvalue;
-            ubracket = (ubracket - 1) * 2 + 1;
-            uvalue = v.value(ubracket);
-        }
-        
-        while ((ubracket - mbracket) != 1)
-        {
-            int botbracket = (lbracket + mbracket) / 2;
-            double botvalue = v.value(botbracket);
-            
-            int topbracket = (mbracket + ubracket) / 2;
-            double topvalue = v.value(topbracket);
-            
-            if (lvalue >= botvalue)
-            {
-                ubracket = mbracket;
-                uvalue = mvalue;
-                
-                mbracket = botbracket;
-                mvalue = botvalue;
-                
-                continue;
-            }
-            
-            if ((botvalue >= lvalue) && (botvalue > mvalue))
-            {
-                ubracket = mbracket;
-                uvalue = mvalue;
-                
-                mbracket = botbracket;
-                mvalue = botvalue;
-                
-                continue;
-            }
-            
-            if ((mvalue >= botvalue) && (mvalue > topvalue))
-            {
-                lbracket = botbracket;
-                lvalue = botvalue;
-                
-                ubracket = topbracket;
-                uvalue = topvalue;
-                
-                continue;
-            }
-            
-            if ((topvalue >= mvalue) && (topvalue > uvalue))
-            {
-                lbracket = mbracket;
-                lvalue = mvalue;
-                
-                mbracket = topbracket;
-                mvalue = topvalue;
-                
-                continue;
-            }
-            
-            if (uvalue > topvalue)
-            {
-                lbracket = mbracket;
-                lvalue = mvalue;
-                
-                mbracket = topbracket;
-                mvalue = topvalue;
-                
-                continue;
-            }
-        }
-        
-        if (lvalue >= mvalue)
-        {
-            value = lvalue;
-            p = lbracket;
-        }
-        
-        if ((lvalue < mvalue) && (mvalue >= uvalue))
-        {
-            value = mvalue;
-            p = mbracket;
-        }
-        
-        if (uvalue > mvalue)
-        {
-            value = uvalue;
-            p = ubracket;
-        }
-    }*/
-    
+    /**
+     * Create a new optimizer
+     * @param value The "object" that is to be optimized
+     * @param startmax The starting maximum values for each parameter
+     * @param absmax The absolute maximum value for each parameter
+     * @throws OptimizeException If there's an error!
+     */    
     public Optimize(Value value, int[] startmax, int[] absmax) throws OptimizeException
     {
         this.value = value;
@@ -255,11 +183,19 @@ public class Optimize
         
     }
     
+    /**
+     * Returns the optimized value
+     * @return The optimized value
+     */
     public double getBestValue()
     {
         return bestV;
     }
     
+    /**
+     * Returns the optimized parameters
+     * @return The optimized parameters
+     */
     public int[] getBestParameter()
     {
         return bestP;
@@ -272,13 +208,25 @@ public class Optimize
     private double bestV;
     private int[] bestP;
     
+    /**
+     * Optimization exception
+     */
     public class OptimizeException extends Exception
     {
+
+        /**
+         * Constructor with a message
+         * @param msg The message
+         */
         public OptimizeException(String msg)
         {
             super(msg);
         }
         
+        /**
+         * Constructor with a causing exception
+         * @param ex The causing exception
+         */
         public OptimizeException(Exception ex)
         {
             super(ex);

@@ -52,14 +52,8 @@ public class Mask
             boolean[] b = new boolean[chars.length];
             for (int i = 0; i < chars.length; i++)
             {
-                if (chars[i] == '0')
-                {
-                    b[i] = false;
-                }
-                else
-                {
-                    b[i] = true;
-                }
+                // 0 is unmasked (so false), anything else is masked (so true)
+                b[i] = !(chars[i] == '0');
             }
             masklist.add(b);
         }

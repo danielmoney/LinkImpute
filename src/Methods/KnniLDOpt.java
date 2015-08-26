@@ -1,3 +1,20 @@
+/*
+ * This file is part of LinkImpute.
+ * 
+ * LinkImpute is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * LinkImpute is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with LinkImpute.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package Methods;
 
 import Mask.Mask;
@@ -5,18 +22,37 @@ import Utils.Value;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Wrapper around KnniLD to allow optimization of parameters
+ * @author Daniel Money
+ */
 public class KnniLDOpt implements Value
 {
     
-    public KnniLDOpt(byte[][] ob, Mask mask, Map<Integer,List<Integer>> sim)
+    /**
+     * Constructor
+     * @param orig The original matrix
+     * @param mask The mask
+     * @param sim Calculated similarity between SNPs (LD).  Map from SNP to
+     * list of most similar SNPs
+     */
+    public KnniLDOpt(byte[][] orig, Mask mask, Map<Integer,List<Integer>> sim)
     {
-        this(ob,mask,sim,false);
+        this(orig,mask,sim,false);
     }
     
-    public KnniLDOpt(byte[][] ob, Mask mask, Map<Integer,List<Integer>> sim,
+    /**
+     * Constructor
+     * @param orig The original matrix
+     * @param mask The mask
+     * @param sim Calculated similarity between SNPs (LD).  Map from SNP to
+     * list of most similar SNPs
+     * @param verbose Verbose output to standard out?
+     */
+    public KnniLDOpt(byte[][] orig, Mask mask, Map<Integer,List<Integer>> sim,
             boolean verbose)
     {
-        this.ob = ob;
+        this.orig = orig;
         this.mask = mask;
         this.sim = sim;
         this.verbose = verbose;
@@ -30,12 +66,12 @@ public class KnniLDOpt implements Value
         }
     }
     
+    @Override
     public double value(int[] p)
     {
         KnniLD knnild = new KnniLD(sim,p[0],p[1]);
-        //double v = knnild.fastAccuracy(orig, mask);
         long start = System.currentTimeMillis();
-        double v = knnild.fastAccuracy(ob, mask);
+        double v = knnild.fastAccuracy(orig, mask);
         long time = (System.currentTimeMillis() - start) / 1000;
         if (verbose)
         {
@@ -48,7 +84,7 @@ public class KnniLDOpt implements Value
         return v;
     }
     
-    private byte[][] ob;
+    private byte[][] orig;
     private Mask mask;
     private Map<Integer,List<Integer>> sim;
     private boolean verbose;

@@ -17,8 +17,6 @@
 
 package Methods;
 
-import Exceptions.NotEnoughGenotypesException;
-import Exceptions.WrongNumberOfSNPsException;
 import Mask.Mask;
 
 /**
@@ -44,9 +42,8 @@ public class Mode
     {
         // Create counts of each of the three genotypes at each SNP
         int[][] count = new int[original[0].length][3];
-        for (int i = 0; i < original.length; i++)
+        for (byte[] o: original)
         {
-            byte[] o = original[i];
             for (int j = 0; j < o.length; j++)
             {
                 if (o[j] >= 0)
@@ -97,8 +94,15 @@ public class Mode
         
         return ret;
     }
-    
-    public double fastAccuracy(byte[][] original, Mask mask) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+
+    /**
+     * Performs a fast accuracy calculation - only imputes those genotypes that
+     * were masked rather than all missing genotypes.
+     * @param original The original genotype values
+     * @param mask A mask
+     * @return The percentage of genotypes imputed correctly
+     */     
+    public double fastAccuracy(byte[][] original, Mask mask)
     {
         boolean[][] maskA = mask.getArray();
         int correct = 0;
@@ -127,11 +131,11 @@ public class Mode
     private byte impute(byte[][] original, int p)
     {
         int[] count = new int[3];
-        for (int j = 0; j < original.length; j++)
+        for (byte[] o: original)
         {
-            if (original[j][p] >= 0)
+            if (o[p] >= 0)
             {
-                count[original[j][p]]++;
+                count[o[p]]++;
             }
         }
         

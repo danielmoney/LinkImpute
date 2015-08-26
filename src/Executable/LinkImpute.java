@@ -15,10 +15,6 @@
  * along with LinkImpute.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//DELETE THIS!
-//C:\Users\Daniel\Documents\Imputation\Apple\Full\Raw\num.raw c:\Temp\null.dat --verbose
-//-a C:\Users\Daniel\Documents\Imputation\Maize\combined_transpose.dat c:\Temp\null.dat --verbose
-
 package Executable;
 
 import Mask.Mask;
@@ -69,17 +65,16 @@ import org.apache.commons.cli.ParseException;
  */
 public class LinkImpute
 {
-    /**
-     * Main executable function
-     * @param args Command line arguments - these are documented in the manual
-     */
-
     //No need for a public constructor!
     private LinkImpute()
     {
         
     }
 
+    /**
+     * Main executable function
+     * @param args Command line arguments - these are documented in the manual
+     */
     public static void main(String[] args)
     {
         Options options = new Options();
@@ -95,6 +90,9 @@ public class LinkImpute
         method.addOption(Option.builder().longOpt("knni").desc("Use kNN imputation instead of LD-kNNi").build());
         options.addOptionGroup(method);
         
+        options.addOption(Option.builder().longOpt("fixedk").hasArg().desc("Fix the value of k to the given value").build());
+        options.addOption(Option.builder().longOpt("fixedl").hasArg().desc("Fix the value of l to the given value").build());
+        
         options.addOption(Option.builder().longOpt("ldout").hasArg().desc("Output the snps most in LD with each snp to the given file").build());
         options.addOption(Option.builder().longOpt("ldnum").hasArg().desc("Output the given number of snps most in LD. Defaults to 65").build());
         options.addOption(Option.builder().longOpt("ldin").hasArg().desc("Read LD information from the given file rather than calculate it").build());
@@ -104,18 +102,25 @@ public class LinkImpute
         
         options.addOption(Option.builder().longOpt("help").desc("Display this help").build());
         
+        options.addOption(Option.builder().longOpt("version").desc("Display version information").build());
+        
         CommandLineParser parser = new DefaultParser();
         
         try
         {
             boolean help = false;
+            boolean version = false;
             CommandLine commands = parser.parse(options, args);
             
             if (commands.hasOption("help"))
             {
                 help = true;
             }
-            else
+            if (commands.hasOption("version"))
+            {
+                version = true;
+            }
+            if (!(version || help))
             {
                 if (commands.getArgList().size() != 2)
                 {
@@ -159,6 +164,29 @@ public class LinkImpute
                         }
                     }
                 }
+                
+                if (commands.hasOption("fixedl") && 
+                        (commands.hasOption("mode") || commands.hasOption("knni")))
+                {
+                    System.out.println("fixedl option cannot be used with mode or knni"
+                            + "options");
+                    help = true;
+                }
+                if (commands.hasOption("fixedk") && commands.hasOption("mode"))
+                {
+                    System.out.println("fixedk option cannot be used with mode "
+                            + "option");
+                }
+                if (!(commands.hasOption("mode") || commands.hasOption("knni")) &&
+                        (commands.hasOption("fixedk") ^ commands.hasOption("fixedl")))
+                {
+                        System.out.println("fixedk and fixedl options must be used"
+                                + "together for LD-knni imputation");
+                }
+                
+                help = badNumeric(commands,"ldnum") | help;
+                help = badNumeric(commands,"fixedk") | help;
+                help = badNumeric(commands,"fixedl") | help;                
             }
             
             if (help)
@@ -166,7 +194,11 @@ public class LinkImpute
                 System.out.println();
                 help(options);
             }
-            else
+            if (version)
+            {
+                System.out.println("Version 1.0 (17 June 2015)");
+            }
+            if (!(version || help))
             {
                 run(commands);
             }
@@ -193,13 +225,40 @@ public class LinkImpute
         }
     }
     
+    private static boolean badNumeric(CommandLine commands, String option)
+    {
+        boolean bad = false;
+        if (commands.hasOption(option))
+        {
+            try
+            {
+                if (Integer.parseInt(commands.getOptionValue(option)) <= 0)
+                {
+                    bad = true;
+                }
+            }
+            catch(NumberFormatException ex)
+            {
+                bad = true;
+            }
+            if (bad)
+            {
+                System.out.println("Arguement to " + option + " must be an integer"
+                        + " greater than zero");
+            }
+        }
+        return bad;
+    }
+    
     private static void help(Options options)
     {
         HelpFormatter formatter = new HelpFormatter();
         formatter.setLongOptSeparator("=");
-        String[] order = {"p", "a", "v", "knni", "mode", "verbose","ldin","ldout","ldnum","ldonly","help"};
+        String[] order = {"p", "a", "v", "knni", "mode", "verbose","fixedk", "fixedl",
+            "ldin","ldout","ldnum","ldonly","version","help"};
         formatter.setOptionComparator(new OptionOrder(order));
         formatter.printHelp("Impute [-p | -a | -v] [--mode | --knni] \n" +
+        "       [--fixedk=<arg>] [--fixedl=<arg>] \n" +
         "       [--ldout=<arg>] [--ldnum=<arg>] [--ldin=<arg>] [--ldonly]\n" +
         "       INFILE OUTFILE", 
                 "\nImputes any missing values in the input file\n\n", options,
@@ -245,15 +304,8 @@ public class LinkImpute
         switch (fileFormat)
         {
             case VCF:
-                /*Map<String,Byte> map = new HashMap<>();
-                map.put("0/0", (byte) 0);
-                map.put("0/1", (byte) 1);
-                map.put("1/1", (byte) 2);
-                map.put("./.", (byte) -1);*/
-                
                 vcf = new VCF(new File(in));
                 FormatDefinition gtF = vcf.getMeta().getFormatDefintion("GT");
-                //original = vcf.getData().asByteArray(gtF, map);                
                 original = vcf.getData().asByteArray(gtF, new GenoToByte());                
                 break;
             case ARRAY:
@@ -265,8 +317,6 @@ public class LinkImpute
                 original = pn.asArray();
                 break;
         }
-        
-        //BufferByteArray2D ob = new BufferByteArray2D(original);
 
         System.out.println("\tRead in data set of " + original.length + " samples and " +
             original[0].length + " SNPs.");
@@ -348,32 +398,56 @@ public class LinkImpute
                     break;
                 case KNNI:
                     double[][] weight = Knni.weight(original);
-                    System.out.println("Starting optimizing parameters...");
-                    partstart = System.currentTimeMillis();
-                    KnniOpt knniopt = new KnniOpt(original,mask,weight,verbose);
-                    int[] startmax = {9};
-                    int[] absmax = {original.length};
-                    Optimize ok = new Optimize(knniopt,startmax,absmax);
-                    if (!verbose)
+                    int k;
+                    if (commands.hasOption("fixedk"))
                     {
-                        System.out.println();
-                    }
-                    
-                    System.out.println("\tBest k:\t" + ok.getBestParameter()[0]);
-                    System.out.println("\tAccuracy:\t" + ok.getBestValue());
-                    if (verbose)
-                    {
-                        long time = (System.currentTimeMillis() - partstart) / 1000;
-                        System.out.println("Finished optimizing parameters (" + time + " seconds).");
+                        k = Integer.parseInt(commands.getOptionValue("fixedk"));
+                        System.out.println("Estimating Acciracy...");
+                        partstart = System.currentTimeMillis();                  
+
+                        Knni knni = new Knni(k);
+                        System.out.println("\tAccuracy:\t" + knni.fastAccuracy(original, mask, weight));
+                        
+                        if (verbose)
+                        {
+                            long time = (System.currentTimeMillis() - partstart) / 1000;
+                            System.out.println("Finished estimating accuracy (" + time + " seconds).");
+                        }
+                        else
+                        {
+                            System.out.println("Finished estimating accuracy.");
+                        }
                     }
                     else
-                    {
-                        System.out.println("Finished optimizing parameters.");
+                    {                        
+                        System.out.println("Starting optimizing parameters...");
+                        partstart = System.currentTimeMillis();
+                        KnniOpt knniopt = new KnniOpt(original,mask,weight,verbose);
+                        int[] startmax = {9};
+                        int[] absmax = {original.length};
+                        Optimize ok = new Optimize(knniopt,startmax,absmax);
+                        if (!verbose)
+                        {
+                            System.out.println();
+                        }
+
+                        System.out.println("\tBest k:\t" + ok.getBestParameter()[0]);
+                        System.out.println("\tAccuracy:\t" + ok.getBestValue());
+                        if (verbose)
+                        {
+                            long time = (System.currentTimeMillis() - partstart) / 1000;
+                            System.out.println("Finished optimizing parameters (" + time + " seconds).");
+                        }
+                        else
+                        {
+                            System.out.println("Finished optimizing parameters.");
+                        }
+                        k = ok.getBestParameter()[0];
                     }
                     
                     System.out.println("Starting imputation...");
                     partstart = System.currentTimeMillis();
-                    Knni knni = new Knni(ok.getBestParameter()[0]);
+                    Knni knni = new Knni(k);
                     imputed = knni.compute(original,weight);
                     if (verbose)
                     {
@@ -387,39 +461,59 @@ public class LinkImpute
                     break;
                 case LDKNNI:
                 default:
-                    System.out.println("Starting optimizing parameters...");
-                    partstart = System.currentTimeMillis();
-                    //KnniLDOpt knnildopt = new KnniLDOpt(original,mask,ld,verbose);
-                    KnniLDOpt knnildopt = new KnniLDOpt(original,mask,ld,verbose);
-                    //NEED TO SORT THIS!
-                    int[] startmaxld = {9,17};
-                    int[] absmaxld = {original.length,ld.get(0).size()};
-                    Optimize ol = new Optimize(knnildopt,startmaxld,absmaxld);
-                    if (!verbose)
+                    int l;
+                    if (commands.hasOption("fixedk"))
                     {
-                        System.out.println();
-                    }
-                    
-                    System.out.println("\tBest k:\t\t" + ol.getBestParameter()[0]);
-                    System.out.println("\tBest l:\t\t" + ol.getBestParameter()[1]);
-                    System.out.println("\tAccuracy:\t" + ol.getBestValue());
-                    if (verbose)
-                    {
-                        long time = (System.currentTimeMillis() - partstart) / 1000;
-                        System.out.println("Finished optimizing parameters (" + time + " seconds).");
+                        k = Integer.parseInt(commands.getOptionValue("fixedk"));
+                        l = Integer.parseInt(commands.getOptionValue("fixedl"));
+                        System.out.println("Estimating Acciracy...");
+                        partstart = System.currentTimeMillis();                  
+
+                        KnniLD knnild = new KnniLD(ld,k,l);
+                        System.out.println("\tAccuracy:\t" + knnild.fastAccuracy(original, mask));
+                        
+                        if (verbose)
+                        {
+                            long time = (System.currentTimeMillis() - partstart) / 1000;
+                            System.out.println("Finished estimating accuracy (" + time + " seconds).");
+                        }
+                        else
+                        {
+                            System.out.println("Finished estimating accuracy.");
+                        }
                     }
                     else
                     {
-                        System.out.println("Finished optimizing parameters.");
+                        System.out.println("Starting optimizing parameters...");
+                        partstart = System.currentTimeMillis();
+                        KnniLDOpt knnildopt = new KnniLDOpt(original,mask,ld,verbose);
+                        int[] startmaxld = {9,17};
+                        int[] absmaxld = {original.length,ld.get(0).size()};
+                        Optimize ol = new Optimize(knnildopt,startmaxld,absmaxld);
+                        if (!verbose)
+                        {
+                            System.out.println();
+                        }
+
+                        System.out.println("\tBest k:\t\t" + ol.getBestParameter()[0]);
+                        System.out.println("\tBest l:\t\t" + ol.getBestParameter()[1]);
+                        System.out.println("\tAccuracy:\t" + ol.getBestValue());
+                        if (verbose)
+                        {
+                            long time = (System.currentTimeMillis() - partstart) / 1000;
+                            System.out.println("Finished optimizing parameters (" + time + " seconds).");
+                        }
+                        else
+                        {
+                            System.out.println("Finished optimizing parameters.");
+                        }
+                        k = ol.getBestParameter()[0];
+                        l = ol.getBestParameter()[1];
                     }
 
                     System.out.println("Starting imputation...");
                     partstart = System.currentTimeMillis();
-                    //KnniLD knnild = new KnniLD(ld,ol.getBestParameter()[0],
-                    //        ol.getBestParameter()[1]);
-                    KnniLD knnild = new KnniLD(ld,5,
-                            20);
-                    //imputed = knnild.compute(original);
+                    KnniLD knnild = new KnniLD(ld,k,l);
                     imputed = knnild.compute(original);
                     if (verbose)
                     {
@@ -678,6 +772,7 @@ public class LinkImpute
             this.order = order;
         }
         
+        @Override
         public int compare(Option o1, Option o2)
         {
             String s1;
@@ -705,7 +800,7 @@ public class LinkImpute
         private List<String> order;
     }
     
-    public static class GenoToByte implements ByteMapper
+    private static class GenoToByte implements ByteMapper
     {
         public GenoToByte()
         {
@@ -716,12 +811,13 @@ public class LinkImpute
             map.put("./.", (byte) -1);
         }
         
+        @Override
         public byte map(String s)
         {
             return map.get(s);
         }
         
-        private HashMap<String,Byte> map;
+        private final HashMap<String,Byte> map;
     }
     
     private enum FileFormat

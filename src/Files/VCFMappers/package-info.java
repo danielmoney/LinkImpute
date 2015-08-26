@@ -14,9 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with LinkImpute.  If not, see <http://www.gnu.org/licenses/>.
  */
-package Files.VCFMappers;
 
-public interface DoubleMapper
-{
-    public double map(String v);
-}
+/**
+ * Provides classes that help convert string vcf data to other data types.  
+ * Currently experimental and not documented.
+ */
+package Files.VCFMappers;

@@ -19,7 +19,7 @@ package Exceptions;
 
 /**
  * Exception to be thrown if a sample name is repeated
- * @author Daniel
+ * @author Daniel Money
  */
 public class RepeatedSampleException extends DataException
 {

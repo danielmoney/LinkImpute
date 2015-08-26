@@ -48,6 +48,7 @@ public class SortByIndexDouble implements Comparator<Integer>
         this.reverse = reverse;
     }
 
+    @Override
     public int compare(Integer i, Integer j)
     {
         if (reverse)

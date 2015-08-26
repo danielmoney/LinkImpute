@@ -14,9 +14,8 @@
  * You should have received a copy of the GNU General Public License
  * along with LinkImpute.  If not, see <http://www.gnu.org/licenses/>.
  */
-package Files.VCFMappers;
 
-public interface DoubleMapper
-{
-    public double map(String v);
-}
+/**
+ * Provides classes for masking genotypes for testing imputation accuracy.
+ */
+package Mask;

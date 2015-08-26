@@ -18,6 +18,8 @@
 package Correlation;
 
 import Utils.Progress;
+import Utils.SilentProgress;
+import Utils.TextProgress;
 import Utils.TopQueue;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,7 +40,7 @@ public abstract class Correlation
 {
 
     /**
-     * Deafult constructor
+     * Default constructor
      */
     protected Correlation()
     {        
@@ -78,7 +80,16 @@ public abstract class Correlation
      */
     public Map<Integer,List<Integer>> topn(byte[][] data, int n)
     {
-        Progress progress = new Progress(data.length * (data.length - 1) / 2);
+        Progress progress;
+        if (SILENT)
+        {
+            progress = new SilentProgress();
+        }
+        else
+        {
+            long num = (long) data.length * ((long) data.length - 1) / 2;
+            progress = new TextProgress(num);
+        }
         Map<Integer,TopQueue<Integer,Double>> work = new HashMap<>();
         for (int i = 0; i < data.length; i++)
         {
@@ -126,6 +137,7 @@ public abstract class Correlation
             this.progress = progress;
         }
         
+        @Override
         public Void call()
         {
             for (int j = i + 1; j < data.length; j++)
@@ -143,4 +155,11 @@ public abstract class Correlation
         private final byte[][] data;
         private final Map<Integer,TopQueue<Integer,Double>> work;
     }
+    
+    public static void setSilent(boolean s)
+    {
+        SILENT = s;
+    }
+    
+    private static boolean SILENT = false;
 }

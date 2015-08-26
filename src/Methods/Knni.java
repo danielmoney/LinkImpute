@@ -65,16 +65,23 @@ public class Knni
         return compute(original, weight(original));
     }
     
-    // Written as a seperate function to allow possible future expansion with
-    // a different distance function
+    // Written as a seperate function so distances only have to be calculated
+    // once if multiple Knni instances (with different values of k) are being
+    // used.
+    /**
+     * Impute missing data
+     * @param original The original data set.  Missing data is coded as -1
+     * @param d Distance matrix giving the distance between samples
+     * @throws NotEnoughGenotypesException If there is not enough known genotypes for
+     * imputation
+     * @throws WrongNumberOfSNPsException If the number of SNPs is not the same for
+     * every sample
+     * @return The imputed data set.
+     */
     public byte[][] compute(byte[][] original, double[][] d) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
-        // Comment out code to catch a possible error as this can only happen with
-        // a user passed distance matrix and at the moment this function is private
-        //if (d.length != original.length)
-        //{
-        //    System.err.println("This should be an error.  Things are about to go worng!");
-        //}
+        // NEED SOME PROPER ERROR CHECKING HERE, IN CASE THE NUMBER OF SAMPLES IN
+        // ORIGINAL AND D DISAGREE
 
         byte[][] imputed = new byte[original.length][];
         
@@ -148,12 +155,31 @@ public class Knni
         return 2;
     }
     
-    public double fastAccuracy(byte[][] original, Mask mask) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    /**
+     * Performs a fast accuracy calculation - only imputes those genotypes that
+     * were masked rather than all missing genotypes.
+     * @param original The original genotype values
+     * @param mask A mask
+     * @return The percentage of genotypes imputed correctly
+     * @throws Exceptions.NotEnoughGenotypesException Thrown if there are not k
+     * known genotypes avaliable for a SNP
+     */  
+    public double fastAccuracy(byte[][] original, Mask mask) throws NotEnoughGenotypesException
     {
         return fastAccuracy(original, mask, weight(original));
     }
-    
-    public double fastAccuracy(byte[][] original, Mask mask, double[][] w) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+
+    /**
+     * Performs a fast accuracy calculation - only imputes those genotypes that
+     * were masked rather than all missing genotypes.
+     * @param original The original genotype values
+     * @param mask A mask
+     * @param d Distance matrix giving the distance between samples
+     * @return The percentage of genotypes imputed correctly
+     * @throws Exceptions.NotEnoughGenotypesException Thrown if there are not k
+     * known genotypes avaliable for a SNP
+     */  
+    public double fastAccuracy(byte[][] original, Mask mask, double[][] d) throws NotEnoughGenotypesException
     {
         boolean[][] maskA = mask.getArray();
         int correct = 0;
@@ -166,10 +192,10 @@ public class Knni
             {
                 if (m[j])
                 {
-                    SortByIndexDouble si = new SortByIndexDouble(w[i],true);
+                    SortByIndexDouble si = new SortByIndexDouble(d[i],true);
                     Integer[] indicies = si.sort();
                     
-                    byte imputed = impute(j ,original, indicies, w[i]);
+                    byte imputed = impute(j ,original, indicies, d[i]);
                     if (imputed == original[i][j])
                     {
                         correct++;
@@ -182,6 +208,11 @@ public class Knni
         return (double) correct / (double) total;
     }
     
+    /**
+     * Calculates distances between samples using a scaled taxicab distances
+     * @param values Genotype array
+     * @return Distance (between samples) array
+     */
     public static double[][] weight(byte[][] values)
     {
         ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
@@ -196,7 +227,6 @@ public class Knni
         {
             es.invokeAll(parts);
             es.shutdown();
-            //es.awaitTermination(1, TimeUnit.HOURS);
         }
         catch (InterruptedException ex)
         {
@@ -250,7 +280,7 @@ public class Knni
             this.i = i;
         }
         
-        //public void run()
+        @Override
         public Void call()
         {
             for (int j = i + 1; j < data.length; j++)

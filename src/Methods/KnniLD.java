@@ -22,6 +22,8 @@ import Exceptions.WrongNumberOfSNPsException;
 import Mask.Mask;
 import Mask.SampleSnp;
 import Utils.Progress;
+import Utils.SilentProgress;
+import Utils.TextProgress;
 import Utils.SortByIndexDouble;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,27 +41,6 @@ import java.util.concurrent.Future;
  */
 public class KnniLD
 {
-
-    /**
-     * Creates an object to perform LD-kNNi imputation with the default of k = 5 and l = 20
-     * @param similar Similarity matrix between SNPs (normally a LD matrix).
-     */
-    /*public KnniLD(double[][] similar)
-    {
-        this(similar,5,20);
-    }*/
-    
-    /**
-     * Creates an object to perform LD-kNNi with the default of l = 20 and a given
-     * value of k.
-     * @param similar Similarity matrix between SNPs (normally a LD matrix).
-     * @param k The value of k to be used
-     */
-    /*public KnniLD(double[][] similar, int k)
-    {
-        this(similar,k,20);
-    }*/
-
     /**
      * Creates an object to perform LD-kNNi with given values of k and l.
      * @param similar Similarity matrix between SNPs (normally a LD matrix).
@@ -79,16 +60,12 @@ public class KnniLD
         }
     }
     
-    /*public KnniLD(Map<Integer,List<Integer>> topn)
-    {
-        this(topn,5,20);
-    }
-    
-    public KnniLD(Map<Integer,List<Integer>> topn, int k)
-    {
-        this(topn,k,20);
-    }*/
-    
+    /**
+     * Creates an object to perform LD-kNNi with given values of k and l.
+     * @param topn A map from SNP to a list of most similar SNPs
+     * @param k The value of k to be used
+     * @param l The value of l to be used
+     */
     public KnniLD(Map<Integer,List<Integer>> topn, int k, int l)
     {
         this.k = k;
@@ -112,8 +89,19 @@ public class KnniLD
      */
     public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
-        Progress progress = new Progress(original.length);
-        //ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        int nt = Runtime.getRuntime().availableProcessors();
+        ExecutorService es = Executors.newFixedThreadPool(nt);
+
+        
+        Progress progress;
+        if (SILENT)
+        {
+            progress = new SilentProgress();
+        }
+        else
+        {
+            progress = new TextProgress(original.length);
+        }
 
         byte[][] imputed = new byte[original.length][];
 
@@ -148,57 +136,6 @@ public class KnniLD
         return imputed;
     }
     
-    /*public byte[][] compute(byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
-    {
-        return compute(new BufferByteArray2D(original));
-    }
-    
-    public byte[][] compute(BufferByteArray2D ob) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
-    {
-        
-        //Progress progress = new Progress(original.length);
-        Progress progress = new Progress(ob.outersize());
-        ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        
-        //BufferByteArray2D ob = new BufferByteArray2D(original);
-
-        //byte[][] imputed = new byte[original.length][];
-        byte[][] imputed = new byte[ob.outersize()][];
-
-        // Loop over samples in order and then snps, imputing those genotypes that
-        // are missing
-        //for (int s = 0; s < original.length; s++)
-        for (int s = 0; s < ob.outersize(); s++)
-        {
-            //imputed[s] = new byte[original[s].length];
-            imputed[s] = new byte[ob.innersize()];
-            List<Part> parts = new ArrayList<>();
-            
-            int preend = -1;
-            for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++)
-            {
-                int start = preend + 1;
-                int end = (i+1) * ob.innersize() / Runtime.getRuntime().availableProcessors();
-                //int end = (i+1) * original[s].length / Runtime.getRuntime().availableProcessors();
-                preend = end;
-                
-                parts.add(new Part(ob,imputed[s],s,start,end));
-            }
-            try
-            {
-                es.invokeAll(parts);
-            }
-            catch (InterruptedException ex)
-            {
-                //NEED TO DEAL WITH THIS PROPERLY!
-            }
-            progress.done();
-        }
-        
-        es.shutdown();
-        return imputed;
-    }*/
-    
     private byte impute(int s, int p, byte[][] original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
     {
         //Calculate the distance to other samples for this snp / sample combination
@@ -209,7 +146,6 @@ public class KnniLD
         Integer[] indicies = si.sort();
         
         int f = 0;
-        //int i = 1;
         int i = 0;
 
         // Store the weights applicable to each of the three genotypes
@@ -246,54 +182,6 @@ public class KnniLD
         return 2;
     }
     
-    /*private byte impute(int s, int p, BufferByteArray2D original) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
-    {
-        //Calculate the distance to other samples for this snp / sample combination
-        double[] dist = dist(s,p,original);
-        
-        //Order the samples by their distance
-        SortByIndexDouble si = new SortByIndexDouble(dist);
-        Integer[] indicies = si.sort();
-        
-        int f = 0;
-        //int i = 1;
-        int i = 0;
-
-        // Store the weights applicable to each of the three genotypes
-        double[] w = new double[3];
-        //Loop around samples in order of distance
-        do
-        {
-            // Only impute from samples that have a genotype for the crrent SNP
-            byte o = original.get(indicies[i],p);
-            if (o >= 0)
-            {
-                w[o] += 1.0 / dist[indicies[i]];
-                f++;
-            }
-            i++;
-        }
-        // While we haven't seen enough known genotypes and there's still samples left
-        while ((f < k) && (i < indicies.length));
-        
-        if (f < k)
-        {
-            //Throw an error - we don't have k samples with values to impute from
-            throw new NotEnoughGenotypesException(p,k);
-        }
-        
-        // Return the genotype with most weight
-        if ((w[0] >= w[1]) && (w[0] >= w[2]))
-        {
-            return 0;
-        }
-        if (w[1] >= w[2])
-        {
-            return 1;
-        }
-        return 2;
-    }*/
-    
     private double[] dist(int s, int p, byte[][] values) throws WrongNumberOfSNPsException
     {
         //Simply loops round the other samples, catching the case where it's
@@ -302,39 +190,16 @@ public class KnniLD
         for (int i = 0; i < values.length; i++)
         {
             if (i != s)
-            //if ((i != s) && (values[i].get(p) >= 0))
             {
                 ret[i] = sdist(values[s], values[i], p);
             }
             else
             {
-                //ret[i] = 0.0;
                 ret[i] = Double.MAX_VALUE;
             }
         }
         return ret;
     }
-    
-    /*private double[] dist(int s, int p, BufferByteArray2D values) throws WrongNumberOfSNPsException
-    {
-        //Simply loops round the other samples, catching the case where it's
-        //the current sample
-        double[] ret = new double[values.outersize()];
-        for (int i = 0; i < values.outersize(); i++)
-        {
-            if (i != s)
-            //if ((i != s) && (values[i].get(p) >= 0))
-            {
-                ret[i] = sdist(values, s, i, p);
-            }
-            else
-            {
-                //ret[i] = 0.0;
-                ret[i] = Double.MAX_VALUE;
-            }
-        }
-        return ret;
-    }*/
     
     private double sdist(byte[] v1, byte[] v2, int p) throws WrongNumberOfSNPsException
     {
@@ -361,17 +226,15 @@ public class KnniLD
             // If across the l most similar snps there wasn't a single case
             // where both samples had a known genotype then set the distance to
             // max
-            //HO-HUM, THE FOLLOWING LINE MAKES THINGS BETTER!
-            //DOING THE +1 BELOW MAKES MORE SENSE TO ME
-            //d = d + 1;
             if (c == 0)
             {
                 return Double.MAX_VALUE;
             }
-            //Else return the scaled distance
+            //Else return the scaled distance (adding a constant so we don't have a
+            //distance of zero as that caused problems later.
             else
             {
-                return ((double) d * (double) l / (double) c) + 1.0;
+                return ((double) d * (double) l / (double) c) + ADD_CONSTANT;
             }
         }
         else
@@ -383,45 +246,18 @@ public class KnniLD
         }        
     }
     
-    /*private double sdist(BufferByteArray2D values, int v1, int v2, int p) throws WrongNumberOfSNPsException
-    {
-        int d = 0;
-        int c = 0;
-        // Get the most similar snps to the current snp
-        Integer[] s = sim[p];
-        // Use the l most similar ones to calculate the distance
-        for (int j = 0; j < l; j++)
-        {
-            int i = s[j];
-            int p1 = values.get(v1, i);
-            int p2 = values.get(v2, i);
-            if ((p1 != -1) && (p2 != -1))
-            {
-                // c counts how many snps we've actually used to scale the
-                // distance with since some snps will be unknown
-                c++;
-                d += Math.abs(p1 - p2);
-            }
-        }
-        // If across the l most similar snps there wasn't a single case
-        // where both samples had a known genotype then set the distance to
-        // max
-        //HO-HUM, THE FOLLOWING LINE MAKES THINGS BETTER!
-        //DOING THE +1 BELOW MAKES MORE SENSE TO ME
-        //d = d + 1;
-        if (c == 0)
-        {
-            return Double.MAX_VALUE;
-        }
-        //Else return the scaled distance
-        else
-        {
-            return ((double) d * (double) l / (double) c) + 1.0;
-        }
-    }*/
-    
+    /**
+     * Performs a fast accuracy calculation - only imputes those genotypes that
+     * were masked rather than all missing genotypes.
+     * @param original The original genotype values
+     * @param mask A mask
+     * @return The percentage of genotypes imputed correctly
+     */    
     public double fastAccuracy(byte[][] original, Mask mask)
     {
+        int nt = Runtime.getRuntime().availableProcessors();
+        ExecutorService es = Executors.newFixedThreadPool(nt);        
+    
         boolean[][] maskA = mask.getArray();
         //List<SampleSnp> fullList = mask.getList();
         
@@ -447,77 +283,11 @@ public class KnniLD
             }
         }
         
-        //for (SampleSnp s: fullList)
-        //{
-        //    lists.get(ct).add(s);
-        //    ct = (ct + 1) % nt;
-        //}
-        
         List<FastPart> parts = new ArrayList<>();
-        for (List<SampleSnp> l: lists)
+        for (List<SampleSnp> list: lists)
         {
-            parts.add(new FastPart(original,l));
+            parts.add(new FastPart(original,list));
         }
-        
-        int cc = 0;
-        try
-        {
-            List<Future<Integer>> results = es.invokeAll(parts);
-
-            for (Future<Integer> f: results)
-            {
-                cc += f.get();
-            }
-        }
-        catch (InterruptedException | ExecutionException ex)
-        {
-            //NEED TO DEAL WITH THIS PROPERLY
-        }
-        
-        //es.shutdown();
-        
-        return (double) cc / (double) cm;
-        //return (double) cc / (double) fullList.size();
-    }
-    
-    /*public double fastAccuracy(byte[][] original, Mask mask)
-    {
-        return fastAccuracy(new BufferByteArray2D(original),mask);
-    }
-    
-    public double fastAccuracy(BufferByteArray2D ob, Mask mask)
-    {
-        //boolean[][] maskA = mask.getArray();
-        //List<SampleSnp> fullList = mask.getList();
-        
-        int nt = Runtime.getRuntime().availableProcessors();
-        List<List<SampleSnp>> lists = new ArrayList<>(nt);
-        for (int t = 0; t < nt; t++)
-        {
-            lists.add(new ArrayList<SampleSnp>());
-        }
-        int ct = 0;
-        int cm = 0;
-        for (SampleSnp ss: mask.getList())
-        {
-                    lists.get(ct).add(ss);//,ob.get(i, j)));
-                    ct = (ct + 1) % nt;
-                    //cm ++;            
-        }
-        
-        //for (SampleSnp s: fullList)
-        //{
-        //    lists.get(ct).add(s);
-        //    ct = (ct + 1) % nt;
-        //}
-        
-        List<FastPart> parts = new ArrayList<>();
-        for (List<SampleSnp> l: lists)
-        {
-            parts.add(new FastPart(ob,l));
-        }
-        
-        ExecutorService es = Executors.newFixedThreadPool(nt);
         
         int cc = 0;
         try
@@ -535,11 +305,8 @@ public class KnniLD
         }
         
         es.shutdown();
-        
-        //return (double) cc / (double) cm;
-        return (double) cc / (double) mask.getList().size();
-        //return (double) cc / (double) fullList.size();
-    }*/
+        return (double) cc / (double) cm;
+    }
     
     private class Part implements Callable<Void>
     {
@@ -553,6 +320,7 @@ public class KnniLD
             this.end = end;
         }
         
+        @Override
         public Void call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
         {
             for (int p = start; p < end; p++)
@@ -577,52 +345,15 @@ public class KnniLD
         private final byte[][] original;
     }
     
-    /*private class Part implements Callable<Void>
-    {
-        public Part(BufferByteArray2D original, byte[] imputed,
-                int s, int start, int end)
-        {
-            this.original = original;
-            this.imputed = imputed;
-            this.s = s;
-            this.start = start;
-            this.end = end;
-        }
-        
-        public Void call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
-        {
-            for (int p = start; p < end; p++)
-            {
-                byte o = original.get(s,p);
-                if (o >= 0)
-                {
-                    imputed[p] = o;
-                }
-                else
-                {
-                    byte imp = impute(s,p,original);
-                    imputed[p] = imp;
-                }
-            }
-            return null;
-        }
-        
-        private final int s;
-        private final int start;
-        private final int end;
-        private final byte[] imputed;
-        private final BufferByteArray2D original;
-    }*/
-    
     private class FastPart implements Callable<Integer>
     {
-        //public Part(byte[][] original, byte[] imputed, BufferByteArray[] o,
         public FastPart(byte[][] orig, List<SampleSnp> todo)
         {
             this.orig = orig;
             this.todo = todo;
         }
         
+        @Override
         public Integer call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
         {
             int c = 0;
@@ -641,38 +372,20 @@ public class KnniLD
         private final byte[][] orig;
     }
     
-    /*private class FastPart implements Callable<Integer>
+    public static void setAddConstant(double constant)
     {
-        public FastPart(BufferByteArray2D orig, List<SampleSnp> todo)
-        {
-            this.orig = orig;
-            this.todo = todo;
-        }
-        
-        public Integer call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
-        {
-            int c = 0;
-            for (SampleSnp ss: todo)
-            {                
-                byte imp = impute(ss.getSample(), ss.getSnp(), orig);
-                //if (imp == ss.getOriginal())
-                if (imp == orig.get(ss.getSample(), ss.getSnp()))
-                {
-                    c++;
-                }
-            }
-            return c;
-        }
-        
-        private final List<SampleSnp> todo;
-        private final BufferByteArray2D orig;
-    }*/
+        ADD_CONSTANT = constant;
+    }
     
-    Integer[] samporder;
+    public static void setSilent(boolean s)
+    {
+        SILENT = s;
+    }
+    
     Integer[][] sim;
-    private int k;
-    private int l;
+    private final int k;
+    private final int l;
     
-    private static final int nt = Runtime.getRuntime().availableProcessors();
-    private static final ExecutorService es = Executors.newFixedThreadPool(nt);
+    private static double ADD_CONSTANT = 1.0;
+    private static boolean SILENT = false;
 }

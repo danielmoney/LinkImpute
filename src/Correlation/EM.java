@@ -113,42 +113,5 @@ public class EM extends Correlation
          */                
     }
     
-    //NOT SURE WHAT TO DO ABOUT THIS!    
-    /**
-     * Calculates LD between two SNPs
-     * @param d1 SNP 1 genotype
-     * @param d2 SNP 2 genotype
-     * @return LD between the two SNPs
-     */
-    /*public static double calculate(BufferByteArray d1, BufferByteArray d2)
-    {
-        int[][] counts = new int[3][3];
-        int counta = 0; int countb = 0;
-        for (int i = 0; i < d1.size(); i++)
-        {
-            if ((d1.get(i) >= 0) && (d2.get(i) >= 0))
-            {
-                counts[d1.get(i)][d2.get(i)] ++;
-            }
-            //Not sure whether these should be in these if statements or the
-            //one above
-            if (d1.get(i) >= 0)
-            {
-                counta += d1.get(i);
-            }
-            if (d2.get(i) >= 0)
-            {
-                countb += d2.get(i);
-            }
-        }
-                    
-        double pA = 1.0 - 0.5 * (double) counta / (double) d1.size();
-        double pB = 1.0 - 0.5 * (double) countb / (double) d2.size();
-        
-        double pAB = maxpAB(counts, pA, pB);
-        
-        return calculateLD(pA, pB, pAB);
-    }*/
-    
     private static final double R = (3.0 - Math.sqrt(5.0)) / 2.0;    
 }
