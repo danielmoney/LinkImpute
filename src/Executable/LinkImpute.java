@@ -29,6 +29,7 @@ import Methods.KnniLD;
 import Methods.Mode;
 import Correlation.Correlation;
 import Correlation.Pearson;
+import Files.PlinkPed;
 import Files.VCFData.FormatDefinition;
 import Files.VCFMappers.ByteMapper;
 import Files.VCFData.Position;
@@ -81,6 +82,7 @@ public class LinkImpute
         
         OptionGroup fileFormat = new OptionGroup();
         fileFormat.addOption(Option.builder("p").desc("Use plink raw file format (default)").build());
+        fileFormat.addOption(Option.builder("q").desc("Use plink ped file format").build());
         fileFormat.addOption(Option.builder("v").desc("Use VCF file format (experimental)").build());
         fileFormat.addOption(Option.builder("a").desc("Use array file format").build());
         options.addOptionGroup(fileFormat);
@@ -196,7 +198,7 @@ public class LinkImpute
             }
             if (version)
             {
-                System.out.println("Version 1.0 (17 June 2015)");
+                System.out.println("Version 1.1.2 (7 July 2016)");
             }
             if (!(version || help))
             {
@@ -254,10 +256,10 @@ public class LinkImpute
     {
         HelpFormatter formatter = new HelpFormatter();
         formatter.setLongOptSeparator("=");
-        String[] order = {"p", "a", "v", "knni", "mode", "verbose","fixedk", "fixedl",
+        String[] order = {"p", "q", "a", "v", "knni", "mode", "verbose","fixedk", "fixedl",
             "ldin","ldout","ldnum","ldonly","version","help"};
         formatter.setOptionComparator(new OptionOrder(order));
-        formatter.printHelp("Impute [-p | -a | -v] [--mode | --knni] \n" +
+        formatter.printHelp("LinkImpute [-p | -q | -a | -v] [--mode | --knni] \n" +
         "       [--fixedk=<arg>] [--fixedl=<arg>] \n" +
         "       [--ldout=<arg>] [--ldnum=<arg>] [--ldin=<arg>] [--ldonly]\n" +
         "       INFILE OUTFILE", 
@@ -269,7 +271,11 @@ public class LinkImpute
     private static void run(CommandLine commands) throws IOException, DataException, NotEnoughGenotypesException, OptimizeException
     {
         long start = System.currentTimeMillis();
-        FileFormat fileFormat = FileFormat.PLINK;
+        FileFormat fileFormat = FileFormat.RAW;
+        if (commands.hasOption("q"))
+        {
+            fileFormat = FileFormat.PED;
+        }
         if (commands.hasOption("v"))
         {
             fileFormat = FileFormat.VCF;
@@ -297,6 +303,7 @@ public class LinkImpute
         byte[][] original;
         
         PlinkNumeric pn = null;
+        PlinkPed pp = null;
         VCF vcf = null;
         
         System.out.println("\nStarting to read in dataset...");
@@ -311,7 +318,11 @@ public class LinkImpute
             case ARRAY:
                 original = readArray(new File(in));
                 break;
-            case PLINK:
+            case PED:
+                pp = new PlinkPed(new File(in));
+                original = pp.asArray();
+                break;
+            case RAW:
             default:
                 pn = new PlinkNumeric(new File(in));
                 original = pn.asArray();
@@ -537,9 +548,12 @@ public class LinkImpute
                 case ARRAY:
                     writeArrayResult(new File(out), imputed);
                     break;
-                case PLINK:
+                case PED:
+                    writePedResult(new File(out), imputed, pp);
+                    break;
+                case RAW:
                 default:
-                    writePlinkResult(new File(out), imputed, pn);
+                    writeRawResult(new File(out), imputed, pn);
                     break;
             }
             if (verbose)
@@ -680,12 +694,19 @@ public class LinkImpute
                 }
             }
             vcf.getData().changeFormat(gtF, p, rs);
+            c++;
         }
      
         vcf.writeFile(f);
     }
     
-    private static void writePlinkResult(File f, byte[][] result, PlinkNumeric orig) throws IOException
+    private static void writePedResult(File f, byte[][] result, PlinkPed orig) throws IOException
+    {
+        PlinkPed newpp = orig.changeData(result);
+        newpp.writeToFile(f);
+    }
+    
+    private static void writeRawResult(File f, byte[][] result, PlinkNumeric orig) throws IOException
     {
         PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f)));
         
@@ -807,8 +828,14 @@ public class LinkImpute
             map = new HashMap<>();
             map.put("0/0", (byte) 0);
             map.put("0/1", (byte) 1);
+            map.put("1/0", (byte) 1);
             map.put("1/1", (byte) 2);
             map.put("./.", (byte) -1);
+            map.put("0|0", (byte) 0);
+            map.put("0|1", (byte) 1);
+            map.put("1|0", (byte) 1);
+            map.put("1|1", (byte) 2);
+            map.put(".|.", (byte) -1);
         }
         
         @Override
@@ -822,7 +849,8 @@ public class LinkImpute
     
     private enum FileFormat
     {
-        PLINK,
+        RAW,
+        PED,
         VCF,
         ARRAY
     }

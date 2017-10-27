@@ -33,13 +33,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
- * Class for dealing with data in the plink .raw format.  This data is generated
- * using the -recodeA option of Plink
+ * Class for dealing with data in the plink .ped format.
  * @author Daniel Money
  */
-public class PlinkNumeric
+public class PlinkPed
 {    
     /**
      * Constructor.  Loads data from a file.  Defaults to assuming there are six
@@ -51,10 +51,10 @@ public class PlinkNumeric
      * @throws RepeatedSampleException If a Sample name is repeated
      * @throws WrongNumberOfSNPsException If a sample has the wrong number of SNPs
      */
-    public PlinkNumeric(File f) throws IOException, InvalidGenotypeException,
+    public PlinkPed(File f) throws IOException, InvalidGenotypeException,
             RepeatedSNPException, RepeatedSampleException, WrongNumberOfSNPsException
     {
-        this(f,6,false);
+        this(f,6);
     }
     
     /**
@@ -68,81 +68,31 @@ public class PlinkNumeric
      * @throws RepeatedSampleException If a Sample name is repeated
      * @throws WrongNumberOfSNPsException If a sample has the wrong number of SNPs
      */
-    public PlinkNumeric(File f, int metacolumns) throws IOException, InvalidGenotypeException,
-            RepeatedSNPException, RepeatedSampleException, WrongNumberOfSNPsException
-    {
-        this(f,metacolumns,false);
-    }
-    
-    /**
-     * Constructor.  Loads data from a file.  Allows for the removal of the
-     * last two characters from SNP names - useful when _base is included after
-     * the snp name to indicate the major allele base.
-     * @param f File to load data from
-     * @param baseincluded If true removes the last two characters from snp names
-     * @throws IOException If there is a problem reading from the file
-     * @throws InvalidGenotypeException If there is an invalid genotype in the file
-     * @throws RepeatedSNPException If a SNP name is repeated
-     * @throws RepeatedSampleException If a Sample name is repeated
-     * @throws WrongNumberOfSNPsException If a sample has the wrong number of SNPs
-     */
-    public PlinkNumeric(File f, boolean baseincluded) throws IOException, InvalidGenotypeException,
-            RepeatedSNPException, RepeatedSampleException, WrongNumberOfSNPsException
-    {
-        this(f,6,baseincluded);
-    }
-    
-    /**
-     * Constructor.  Loads data from a file.
-     * @param f File to load data from
-     * @param metacolumns The number of meta columns before genotype data begins
-     * @param baseincluded If true removes the last two characters from snp names
-     * @throws IOException If there is a problem reading from the file
-     * @throws InvalidGenotypeException If there is an invalid genotype in the file
-     * @throws RepeatedSNPException If a SNP name is repeated
-     * @throws RepeatedSampleException If a Sample name is repeated
-     * @throws WrongNumberOfSNPsException If a sample has the wrong number of SNPs
-     */
-    public PlinkNumeric(File f, int metacolumns, boolean baseincluded) throws IOException, InvalidGenotypeException,
+    public PlinkPed(File f, int metacolumns) throws IOException, InvalidGenotypeException,
             RepeatedSNPException, RepeatedSampleException, WrongNumberOfSNPsException
     {
         BufferedReader in = new BufferedReader(new FileReader(f));
-         
-        String line = in.readLine();
-        String[] parts = line.split("\\s+");
-
-        SNPs = new ArrayList<>(parts.length - metacolumns);
+                
         samples = new ArrayList<>();
         data = new HashMap<>();
         meta = new HashMap<>();
-
-        metahead = Arrays.copyOf(parts, metacolumns);
-        for (int i = metacolumns; i < parts.length; i++)
-        {
-            String ns;
-            if (baseincluded)
-            {
-                ns = parts[i].substring(0, parts[i].length() - 2);
-            }
-            else
-            {
-                ns = parts[i];
-            }
-            if (SNPs.contains(ns))
-            {
-                throw new RepeatedSNPException(ns);
-            }
-            else
-            {
-                SNPs.add(ns);
-            }
-        }
-
+        
+        int length = -1;
+        String line;
+        
+        Map<Integer,Map<Character,Integer>> counts = new HashMap<>();
+        Map<String,char[]> tempGeno = new HashMap<>();
+        
         while ((line = in.readLine()) != null)
         {
-            parts = line.split("\\s+");
+            String[] parts = line.split("\\s");
 
-            if (parts.length != (metacolumns + SNPs.size()))
+            if (length == -1)
+            {
+                length = parts.length;
+            }
+            
+            if (parts.length != length)
             {
                 throw new WrongNumberOfSNPsException(parts[0]);
             }
@@ -158,26 +108,120 @@ public class PlinkNumeric
             }
 
             meta.put(s, Arrays.copyOf(parts, metacolumns));
-
-            Map<String,Byte> d = new HashMap<>();
-            for (int i = metacolumns; i < parts.length; i++)
+            
+            char[] tg = new char[(parts.length - metacolumns) / 2];
+            for (int i = 0; i < (parts.length - metacolumns) / 2; i++)
             {
-                d.put(SNPs.get(i-metacolumns),getValue(parts[i]));
+                char c1 = parts[i*2 + metacolumns].charAt(0);
+                char c2 = parts[i*2 + metacolumns + 1].charAt(0);
+                char g = getTempGeno(parts[i*2 + metacolumns],parts[i*2 + metacolumns + 1]);
+                tg[i] = g;
+                if (counts.get(i) == null)
+                {
+                    counts.put(i, new HashMap<Character,Integer>());
+                }
+                
+                if (c1 != '0')
+                {
+                    if (counts.get(i).get(c1) == null)
+                    {
+                        counts.get(i).put(c1, 0);
+                    }
+                    counts.get(i).put(c1, counts.get(i).get(c1) + 1);
+                }
+                
+                if (c2 != '0')
+                {
+                    if (counts.get(i).get(c2) == null)
+                    {
+                        counts.get(i).put(c2, 0);
+                    }
+                    counts.get(i).put(c2, counts.get(i).get(c2) + 1);
+                }
+
             }
-            data.put(s,d);
+            tempGeno.put(s,tg);
+        }
+        
+        major = new HashMap<>();
+        minor = new HashMap<>();
+        for (int i = 0; i < counts.size(); i++)
+        {
+            Map<Character,Integer> c = counts.get(i);
+            int maj = 0;
+            int min = 0;
+            major.put(i,null);
+            minor.put(i,null);
+            for (Entry<Character,Integer> e: c.entrySet())
+            {
+                if (e.getValue() > maj)
+                {
+                    min = maj;
+                    maj = e.getValue();
+                    minor.put(i, major.get(i));
+                    major.put(i, e.getKey());
+                }
+                else if (e.getValue() > min)
+                {
+                    min = e.getValue();
+                    minor.put(i,e.getKey());
+                }
+
+            }
         }
 
         in.close();
+        
+        for (String s: samples)
+        {
+            Map<Integer,Byte> d = new HashMap<>();
+            char[] tg = tempGeno.get(s);
+            for (int i = 0; i < tg.length; i++)
+            {
+                d.put(i,getGeno(tg[i],major.get(i)));
+            }
+            data.put(s,d);
+        }
     }
     
-    private PlinkNumeric(List<String> SNPs, List<String> samples, Map<String,Map<String,Byte>> data,
-            String[] metahead, Map<String,String[]> meta)
+    private byte getGeno(char temp, char major)
     {
-        this.SNPs = SNPs;
+        if (temp == 0x00)
+        {
+            return -1;
+        }
+        if (temp == 0x01)
+        {
+            return 1;
+        }
+        if (temp == major)
+        {
+            return 0;
+        }
+        return 2;
+    }
+    
+    private char getTempGeno(String s1, String s2)
+    {
+        if (s1.equals("0") || s2.equals("0"))
+        {
+            return 0x00;
+        }
+        if (!s1.equals(s2))
+        {
+            return 0x01;
+        }
+        return s1.charAt(0);
+    }
+    
+    private PlinkPed(List<String> samples, Map<String,Map<Integer,Byte>> data,
+            Map<String,String[]> meta, Map<Integer,Character> major, Map<Integer,Character> minor)
+    {
         this.samples = samples;
         this.data = data;
-        this.metahead = metahead;
         this.meta = meta;
+        this.major = major;
+        this.minor = minor;
     }
     
     /**
@@ -186,16 +230,15 @@ public class PlinkNumeric
      */
     public byte[][] asArray()
     {
-        byte[][] array = new byte[samples.size()][SNPs.size()];
+        byte[][] array = new byte[samples.size()][data.get(samples.get(0)).size()];
         
         int si = 0;
         for (String s: samples)
         {
             int snpi = 0;
-            for (String snp: SNPs)
+            for (int i = 0; i < data.get(samples.get(0)).size(); i++)
             {
-                array[si][snpi] = data.get(s).get(snp);
-                snpi++;
+                array[si][i] = data.get(s).get(i);
             }
             si++;
         }
@@ -209,30 +252,19 @@ public class PlinkNumeric
      */
     public byte[][] asArrayTransposed()
     {
-        byte[][] array = new byte[SNPs.size()][samples.size()];
+        byte[][] array = new byte[data.get(samples.get(0)).size()][samples.size()];
         
         int si = 0;
         for (String s: samples)
         {
-            int snpi = 0;
-            for (String snp: SNPs)
+            for (int i = 0; i < data.get(samples.get(0)).size(); i++)
             {
-                array[snpi][si] = data.get(s).get(snp);
-                snpi++;
+                array[i][si] = data.get(s).get(i);
             }
             si++;
         }
         
         return array;
-    }
-    
-    /**
-     * Returns the SNPs associated with this Plink object
-     * @return List of SNPs
-     */
-    public List<String> getSNPs()
-    {
-        return SNPs;
     }
     
     /**
@@ -256,40 +288,6 @@ public class PlinkNumeric
     }
     
     /**
-     * Returns the meta header data - i.e. the column headings of the meta data
-     * @return An array of strings representing the meta header data in the order
-     * they appeared in the file.
-     */
-    public String[] getMetaHead()
-    {
-        return metahead;
-    }
-    
-    private byte getValue(String s) throws InvalidGenotypeException
-    {
-        if (s.equals("NA"))
-        {
-            return -1;
-        }
-        else
-        {
-            try
-            {
-                Byte b = Byte.parseByte(s);
-                if ((b < 0) || (b > 2))
-                {
-                    throw new InvalidGenotypeException(s);
-                }
-                return b;
-            }
-            catch (NumberFormatException e)
-            {
-                throw new InvalidGenotypeException(s);
-            }
-        }
-    }
-    
-    /**
      * Writes this object to file in Plink format
      * @param f File to write to
      * @throws IOException Thrown if there is a problem writing the file
@@ -298,27 +296,10 @@ public class PlinkNumeric
     {
         PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f)));
         
-        boolean first = true;
-        for (String mh: metahead)
-        {
-            if (!first)
-            {
-                out.print(" ");
-            }
-            out.print(mh);
-            first = false;
-            
-        }
-        for (String s: SNPs)
-        {
-            out.print(" ");
-            out.print(s);
-        }
-        out.println();
         
         for (String sample: samples)
         {
-            first = true;
+            boolean first = true;
             for (String m: meta.get(sample))
             {
                 if (!first)
@@ -328,22 +309,31 @@ public class PlinkNumeric
                 out.print(m);
                 first = false;
             }
-            Map<String,Byte> d = data.get(sample);
-            for (String snp : SNPs)
+            Map<Integer,Byte> d = data.get(sample);
+            for (int i = 0; i < d.size(); i++)
             {
                 out.print(" ");
-                if (d.get(snp) != -1)
-                {
-                    out.print(d.get(snp));
-                }
-                else
-                {
-                    out.print("NA");
-                }
+                out.print(plinkGeno(d.get(i),major.get(i),minor.get(i)));
             }
             out.println();
         }
         out.close();
+    }
+    
+    private String plinkGeno(byte geno, Character major, Character minor)
+    {
+        switch (geno)
+        {
+            case 0:
+                return major + " " + major;
+            case 1:
+                return major + " " + minor;
+            case 2:
+                return minor + " " + minor;
+            case -1:
+            default:
+                return "0 0";
+        }
     }
     
     /**
@@ -356,7 +346,7 @@ public class PlinkNumeric
         PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(f)));
         
         out.println(samples.size());
-        out.println(SNPs.size());
+        out.println(data.get(samples.get(0)).size());
         
         byte[][] array = asArray();
         
@@ -400,55 +390,32 @@ public class PlinkNumeric
      * @param newData Byte array of the new data indexed by byte[sample][snp]
      * @return New PlinkNumeric instance with the new data
      */
-    public PlinkNumeric changeData(byte[][] newData)
+    public PlinkPed changeData(byte[][] newData)
     {
-        Map<String,Map<String,Byte>> nd = new HashMap<>();
+        Map<String,Map<Integer,Byte>> nd = new HashMap<>();
         for (int i = 0; i < newData.length; i++)
         {
             String sample = samples.get(i);
-            nd.put(sample, new HashMap<String, Byte>());
+            nd.put(sample, new HashMap<Integer, Byte>());
             byte[] n = newData[i];
             for (int j = 0; j < n.length; j++)
             {
-                nd.get(sample).put(SNPs.get(j),n[j]);
+                nd.get(sample).put(j,n[j]);
             }
         }
         
-        return new PlinkNumeric(SNPs, samples, nd, metahead, meta);
+        return new PlinkPed(samples, nd, meta, major, minor);
     }
     
-    /**
-     * Creates a new PlinkNumeric instance with the same meta information as this
-     * instance but different data
-     * @param newData Byte array of the new genotype data indexed by byte[sample][snp]
-     * @param samples The new list of samples (in the order they appear in newData)
-     * @param SNPs The new list of SNPs (in the order they appear in newData)
-     * @return New PlinkNumeric instance with the new data
-     */
-    public PlinkNumeric changeData(byte[][] newData, List<String> samples, List<String> SNPs)
-    {
-        Map<String,Map<String,Byte>> nd = new HashMap<>();
-        for (int i = 0; i < newData.length; i++)
-        {
-            String sample = samples.get(i);
-            nd.put(sample, new HashMap<String, Byte>());
-            byte[] n = newData[i];
-            for (int j = 0; j < n.length; j++)
-            {
-                nd.get(sample).put(SNPs.get(j),n[j]);
-            }
-        }
-        
-        return new PlinkNumeric(SNPs, samples, nd, metahead, meta);
-    }
-    
-    private List<String> SNPs;
+   
     private List<String> samples;
     
     //Map<Sample,Map<SNP,genotype>>
-    private Map<String,Map<String,Byte>> data;
+    private Map<String,Map<Integer,Byte>> data;
     
     //Map<Sample,Meta data for that sample>
     private Map<String,String[]> meta;
-    private String[] metahead;
+    
+    private Map<Integer,Character> major;
+    private Map<Integer,Character> minor;
 }

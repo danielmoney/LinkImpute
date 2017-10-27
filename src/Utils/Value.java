@@ -28,7 +28,7 @@ public interface Value
      * Returns a value given a set of parameters
      * @param parameters The parameters
      * @return A value associated with the parameters
-     * @throws Exception
+     * @throws Exception If the value can't be calculated
      */
     public double value(int[] parameters) throws Exception;
 }

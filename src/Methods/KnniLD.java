@@ -112,11 +112,11 @@ public class KnniLD
             imputed[s] = new byte[original[s].length];
             List<Part> parts = new ArrayList<>();
             
-            int preend = -1;
+            int preend = 0;
             for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++)
             {
-                int start = preend + 1;
-                int end = (i+1) * original[s].length / Runtime.getRuntime().availableProcessors();
+                int start = preend;
+                int end = (i+1) * original[s].length / Runtime.getRuntime().availableProcessors() + 1;
                 preend = end;
                 
                 parts.add(new Part(original,imputed[s],s,start,end));
