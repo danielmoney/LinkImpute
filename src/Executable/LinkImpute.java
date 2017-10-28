@@ -100,6 +100,8 @@ public class LinkImpute
         options.addOption(Option.builder().longOpt("ldin").hasArg().desc("Read LD information from the given file rather than calculate it").build());
         options.addOption(Option.builder().longOpt("ldonly").desc("Do not perform the imputation.  Use to obtain just the LD information").build());
         
+        options.addOption(Option.builder().longOpt("nummask").hasArg().desc("Number of genotypes to mask when optimizing.").build());
+        
         options.addOption(Option.builder().longOpt("verbose").desc("Display detailed run information").build());
         
         options.addOption(Option.builder().longOpt("help").desc("Display this help").build());
@@ -188,7 +190,8 @@ public class LinkImpute
                 
                 help = badNumeric(commands,"ldnum") | help;
                 help = badNumeric(commands,"fixedk") | help;
-                help = badNumeric(commands,"fixedl") | help;                
+                help = badNumeric(commands,"fixedl") | help;
+                help = badNumeric(commands,"nummask") | help;                
             }
             
             if (help)
@@ -198,7 +201,7 @@ public class LinkImpute
             }
             if (version)
             {
-                System.out.println("Version 1.1.2 (7 July 2016)");
+                System.out.println("Version 1.1.3 (28 October 2017)");
             }
             if (!(version || help))
             {
@@ -257,11 +260,12 @@ public class LinkImpute
         HelpFormatter formatter = new HelpFormatter();
         formatter.setLongOptSeparator("=");
         String[] order = {"p", "q", "a", "v", "knni", "mode", "verbose","fixedk", "fixedl",
-            "ldin","ldout","ldnum","ldonly","version","help"};
+            "ldin","ldout","ldnum","ldonly","nummask","version","help"};
         formatter.setOptionComparator(new OptionOrder(order));
         formatter.printHelp("LinkImpute [-p | -q | -a | -v] [--mode | --knni] \n" +
         "       [--fixedk=<arg>] [--fixedl=<arg>] \n" +
         "       [--ldout=<arg>] [--ldnum=<arg>] [--ldin=<arg>] [--ldonly]\n" +
+        "       [--nummask=<arg]\n" +
         "       INFILE OUTFILE", 
                 "\nImputes any missing values in the input file\n\n", options,
                 "\nOutput file will be in the same format as the input and will be indentical "
@@ -373,7 +377,8 @@ public class LinkImpute
         
         if (!commands.hasOption("noimpute"))
         {
-            Mask mask = new Mask(original,10000);
+            int nummask = Integer.parseInt(commands.getOptionValue("nummask", "10000"));
+            Mask mask = new Mask(original,nummask);
             
             byte[][] imputed;
             switch (method)

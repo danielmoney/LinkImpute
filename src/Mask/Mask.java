@@ -69,6 +69,7 @@ public class Mask
      */
     public Mask(byte[][] orig, int number)
     {
+        System.out.println("Masking " + number + " genotypes");
         Random r = new Random();
         int n = 0;
         int al = orig.length;
