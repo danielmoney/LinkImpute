@@ -118,6 +118,19 @@ public abstract class Correlation
         }
         return result;
     }
+
+    public List<Integer> topn(byte[][] data, int n, int p)
+    {
+        TopQueue<Integer,Double> tq = new TopQueue(n,true);
+        for (int i = 0; i < data.length; i++)
+        {
+            if (i != p)
+            {
+                tq.add(i, calculate(data[i], data[p]));
+            }
+        }
+        return tq.getList();
+    }
     
     /**
      * Calculates LD between two SNPs
