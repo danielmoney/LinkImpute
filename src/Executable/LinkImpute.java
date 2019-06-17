@@ -35,6 +35,8 @@ import Files.VCFMappers.ByteMapper;
 import Files.VCFData.Position;
 import Methods.KnniLDOpt;
 import Methods.KnniOpt;
+import Similarity.CalculatedSimilar;
+import Similarity.Similar;
 import Similarity.StoredSimilar;
 import Utils.Optimize;
 import Utils.Optimize.OptimizeException;
@@ -100,10 +102,12 @@ public class LinkImpute
         options.addOption(Option.builder().longOpt("ldnum").hasArg().desc("Output the given number of snps most in LD. Defaults to 65").build());
         options.addOption(Option.builder().longOpt("ldin").hasArg().desc("Read LD information from the given file rather than calculate it").build());
         options.addOption(Option.builder().longOpt("ldonly").desc("Do not perform the imputation.  Use to obtain just the LD information").build());
-        
+
         options.addOption(Option.builder().longOpt("nummask").hasArg().desc("Number of genotypes to mask when optimizing.").build());
         
         options.addOption(Option.builder().longOpt("verbose").desc("Display detailed run information").build());
+
+        options.addOption(Option.builder().longOpt("lowmem").desc("Run in low memory mode at the cost of increased runtime").build());
         
         options.addOption(Option.builder().longOpt("help").desc("Display this help").build());
         
@@ -266,7 +270,7 @@ public class LinkImpute
         formatter.printHelp("LinkImpute [-p | -q | -a | -v] [--mode | --knni] \n" +
         "       [--fixedk=<arg>] [--fixedl=<arg>] \n" +
         "       [--ldout=<arg>] [--ldnum=<arg>] [--ldin=<arg>] [--ldonly]\n" +
-        "       [--nummask=<arg]\n" +
+        "       [--nummask=<arg] [--lowmem]\n" +
         "       INFILE OUTFILE", 
                 "\nImputes any missing values in the input file\n\n", options,
                 "\nOutput file will be in the same format as the input and will be indentical "
@@ -348,7 +352,7 @@ public class LinkImpute
         
         Correlation corr = new Pearson();
         Map<Integer,List<Integer>> ld = null;
-        if (method == Method.LDKNNI)
+        if ((method == Method.LDKNNI) && !commands.hasOption("lowmem"));
         {
             if (!commands.hasOption("ldin"))
             {
@@ -486,7 +490,17 @@ public class LinkImpute
                         System.out.println("Estimating Acciracy...");
                         partstart = System.currentTimeMillis();                  
 
-                        KnniLD knnild = new KnniLD(new StoredSimilar(ld),k,l);
+
+                        Similar similar;
+                        if (!commands.hasOption("lowmem"))
+                        {
+                            similar = new StoredSimilar(ld);
+                        }
+                        else
+                        {
+                             similar = new CalculatedSimilar(corr, transpose(original), Integer.parseInt(commands.getOptionValue("ldnum", "65")));
+                        }
+                        KnniLD knnild = new KnniLD(similar,k,l);
                         System.out.println("\tAccuracy:\t" + knnild.fastAccuracy(original, mask));
                         
                         if (verbose)
