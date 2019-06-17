@@ -21,6 +21,7 @@ import Exceptions.NotEnoughGenotypesException;
 import Exceptions.WrongNumberOfSNPsException;
 import Mask.Mask;
 import Mask.SampleSnp;
+import Similarity.Similar;
 import Utils.Progress;
 import Utils.SilentProgress;
 import Utils.TextProgress;
@@ -41,41 +42,11 @@ import java.util.concurrent.Future;
  */
 public class KnniLD
 {
-    /**
-     * Creates an object to perform LD-kNNi with given values of k and l.
-     * @param similar Similarity matrix between SNPs (normally a LD matrix).
-     * @param k The value of k to be used
-     * @param l The value of l to be used
-     */
-    public KnniLD(double[][] similar, int k, int l)
+    public KnniLD(Similar sim, int k, int l)
     {
         this.k = k;
         this.l = l;
-        sim = new Integer[similar.length][];
-        //For each snp get a ranked list, by similarity, of the other snps
-        for (int i = 0; i < similar.length; i++)
-        {
-            SortByIndexDouble si = new SortByIndexDouble(similar[i],true);
-            sim[i] = si.sort();
-        }
-    }
-    
-    /**
-     * Creates an object to perform LD-kNNi with given values of k and l.
-     * @param topn A map from SNP to a list of most similar SNPs
-     * @param k The value of k to be used
-     * @param l The value of l to be used
-     */
-    public KnniLD(Map<Integer,List<Integer>> topn, int k, int l)
-    {
-        this.k = k;
-        this.l = l;
-        sim = new Integer[topn.size()][];
-        for (Entry<Integer,List<Integer>> e: topn.entrySet())
-        {
-            Integer[] a = new Integer[e.getValue().size()];
-            sim[e.getKey()] = e.getValue().toArray(a);
-        }
+        this.sim = sim;
     }
     
     /**
@@ -110,16 +81,20 @@ public class KnniLD
         for (int s = 0; s < original.length; s++)
         {
             imputed[s] = new byte[original[s].length];
+        }
+
+        for (int p = 0; p < original.length; p++)
+        {
             List<Part> parts = new ArrayList<>();
             
             int preend = 0;
             for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++)
             {
                 int start = preend;
-                int end = (i+1) * original[s].length / Runtime.getRuntime().availableProcessors() + 1;
+                int end = (i+1) * original.length / Runtime.getRuntime().availableProcessors() + 1;
                 preend = end;
                 
-                parts.add(new Part(original,imputed[s],s,start,end));
+                parts.add(new Part(original,imputed,p,start,end));
             }
             try
             {
@@ -208,7 +183,8 @@ public class KnniLD
             int d = 0;
             int c = 0;
             // Get the most similar snps to the current snp
-            Integer[] s = sim[p];
+            //Integer[] s = sim[p];
+            Integer[] s = sim.getSimilar(p);
             // Use the l most similar ones to calculate the distance
             for (int j = 0; j < l; j++)
             {
@@ -310,12 +286,12 @@ public class KnniLD
     
     private class Part implements Callable<Void>
     {
-        public Part(byte[][] original, byte[] imputed,
-                int s, int start, int end)
+        public Part(byte[][] original, byte[][] imputed,
+                int p, int start, int end)
         {
             this.original = original;
             this.imputed = imputed;
-            this.s = s;
+            this.p = p;
             this.start = start;
             this.end = end;
         }
@@ -323,25 +299,25 @@ public class KnniLD
         @Override
         public Void call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
         {
-            for (int p = start; p < end; p++)
+            for (int s = start; s < end; s++)
             {
                 if (original[s][p] >= 0)
                 {
-                    imputed[p] = original[s][p];
+                    imputed[s][p] = original[s][p];
                 }
                 else
                 {
                     byte imp = impute(s,p,original);
-                    imputed[p] = imp;
+                    imputed[s][p] = imp;
                 }
             }
             return null;
         }
         
-        private final int s;
+        private final int p;
         private final int start;
         private final int end;
-        private final byte[] imputed;
+        private final byte[][] imputed;
         private final byte[][] original;
     }
     
@@ -382,7 +358,7 @@ public class KnniLD
         SILENT = s;
     }
     
-    Integer[][] sim;
+    Similar sim;
     private final int k;
     private final int l;
     

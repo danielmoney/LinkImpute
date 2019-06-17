@@ -35,6 +35,7 @@ import Files.VCFMappers.ByteMapper;
 import Files.VCFData.Position;
 import Methods.KnniLDOpt;
 import Methods.KnniOpt;
+import Similarity.StoredSimilar;
 import Utils.Optimize;
 import Utils.Optimize.OptimizeException;
 import java.io.BufferedReader;
@@ -485,7 +486,7 @@ public class LinkImpute
                         System.out.println("Estimating Acciracy...");
                         partstart = System.currentTimeMillis();                  
 
-                        KnniLD knnild = new KnniLD(ld,k,l);
+                        KnniLD knnild = new KnniLD(new StoredSimilar(ld),k,l);
                         System.out.println("\tAccuracy:\t" + knnild.fastAccuracy(original, mask));
                         
                         if (verbose)
@@ -529,7 +530,7 @@ public class LinkImpute
 
                     System.out.println("Starting imputation...");
                     partstart = System.currentTimeMillis();
-                    KnniLD knnild = new KnniLD(ld,k,l);
+                    KnniLD knnild = new KnniLD(new StoredSimilar(ld),k,l);
                     imputed = knnild.compute(original);
                     if (verbose)
                     {

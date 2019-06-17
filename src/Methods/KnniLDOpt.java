@@ -18,6 +18,7 @@
 package Methods;
 
 import Mask.Mask;
+import Similarity.StoredSimilar;
 import Utils.Value;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +70,7 @@ public class KnniLDOpt implements Value
     @Override
     public double value(int[] p)
     {
-        KnniLD knnild = new KnniLD(sim,p[0],p[1]);
+        KnniLD knnild = new KnniLD(new StoredSimilar(sim),p[0],p[1]);
         long start = System.currentTimeMillis();
         double v = knnild.fastAccuracy(orig, mask);
         long time = (System.currentTimeMillis() - start) / 1000;
