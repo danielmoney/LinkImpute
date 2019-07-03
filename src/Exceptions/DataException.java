@@ -24,7 +24,7 @@ package Exceptions;
 public class DataException extends Exception
 {
     /**
-     * Constructs an instance of <code>DataException</code> with the specified
+     * Constructs an instance of {@code DataException} with the specified
      * detail message.
      *
      * @param msg the detail message.

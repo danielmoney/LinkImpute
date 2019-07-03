@@ -119,6 +119,15 @@ public abstract class Correlation
         return result;
     }
 
+    /**
+     * Calculates the top n sites most in LD with a single site.
+     * @param data The data to calculate LD for.  SNPs are indexed by the first
+     * position of the array, samples by the second.  For example data[1][2] would be
+     * SNP 1 and sample 2.
+     * @param n Number of top hits to return
+     * @param p Index of site to calculate other sites most in LD with it
+     * @return Ordered list of sites most in LD
+     */
     public List<Integer> topn(byte[][] data, int n, int p)
     {
         TopQueue<Integer,Double> tq = new TopQueue(n,true);
@@ -168,7 +177,11 @@ public abstract class Correlation
         private final byte[][] data;
         private final Map<Integer,TopQueue<Integer,Double>> work;
     }
-    
+
+    /**
+     * Contols progress output to screen
+     * @param s Whether to output progress to screen
+     */
     public static void setSilent(boolean s)
     {
         SILENT = s;

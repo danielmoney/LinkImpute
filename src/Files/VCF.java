@@ -37,6 +37,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Class for dealing with data in the plink .vcf format.  Currently experimental and undocumented
+ * @author Daniel Money
+ */
 public class VCF
 {
     /****************************************************************

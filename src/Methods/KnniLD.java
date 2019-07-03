@@ -41,6 +41,12 @@ import java.util.concurrent.Future;
  */
 public class KnniLD
 {
+    /**
+     * Constructor
+     * @param sim Similarity object to use to get similarity between snps
+     * @param k The number of nearest neighbours to use
+     * @param l The number of most similar snps to use to calulate nearest neighbours
+     */
     public KnniLD(Similar sim, int k, int l)
     {
         this.k = k;
@@ -340,12 +346,22 @@ public class KnniLD
         private final List<SampleSnp> todo;
         private final byte[][] orig;
     }
-    
+
+    /**
+     * Sets the constant to add to avoid a distance of zero (since this causes problems later).  Default value is 1.0
+     * if this function is not called
+     * @param constant Constant to use
+     */
     public static void setAddConstant(double constant)
     {
         ADD_CONSTANT = constant;
     }
-    
+
+
+    /**
+     * Contols progress output to screen
+     * @param s Whether to output progress to screen
+     */
     public static void setSilent(boolean s)
     {
         SILENT = s;
