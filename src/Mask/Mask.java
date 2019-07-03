@@ -23,9 +23,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * Represents a mask for calculating imputation accuracy.  Contains data on
@@ -44,7 +42,7 @@ public class Mask
     {
         BufferedReader in = new BufferedReader(new FileReader(f));
         ArrayList<boolean[]> masklist = new ArrayList<>();
-        list = null;
+        set = null;
         String line;
         while ((line = in.readLine()) != null)
         {
@@ -86,7 +84,7 @@ public class Mask
                 n++;
             }
         }
-        list = null;
+        set = null;
     }
     
     /**
@@ -94,11 +92,11 @@ public class Mask
      * function is first called to save memory.
      * @return A list of masked genotypes
      */
-    public List<SampleSnp> getList()
+    public Set<SampleSnp> getSet()
     {
-        if (list == null)
+        if (set == null)
         {
-            list = new ArrayList<>();
+            set = new TreeSet<>();
             for (int sample = 0; sample < mask.length; sample++)
             {
                 boolean[] m = mask[sample];
@@ -106,12 +104,12 @@ public class Mask
                 {
                     if (m[snp])
                     {
-                        list.add(new SampleSnp(sample,snp));
+                        set.add(new SampleSnp(sample,snp));
                     }
                 }
             }
         }
-        return list;
+        return set;
     }
     
     /**
@@ -206,5 +204,5 @@ public class Mask
     }
     
     private boolean[][] mask;
-    private List<SampleSnp> list;
+    private Set<SampleSnp> set;
 }

@@ -279,6 +279,11 @@ public class LinkImpute
     
     private static void run(CommandLine commands) throws IOException, DataException, NotEnoughGenotypesException, OptimizeException
     {
+        if (commands.hasOption("lowmem"))
+        {
+            System.out.println();
+            System.out.println("RUNNING IN EXPERIMENTAL LOW MEMORY MODE");
+        }
         long start = System.currentTimeMillis();
         FileFormat fileFormat = FileFormat.RAW;
         if (commands.hasOption("q"))
@@ -352,7 +357,7 @@ public class LinkImpute
         
         Correlation corr = new Pearson();
         Map<Integer,List<Integer>> ld = null;
-        if ((method == Method.LDKNNI) && !commands.hasOption("lowmem"));
+        if ((method == Method.LDKNNI) && !commands.hasOption("lowmem"))
         {
             if (!commands.hasOption("ldin"))
             {
@@ -482,6 +487,15 @@ public class LinkImpute
                     break;
                 case LDKNNI:
                 default:
+                    Similar similar;
+                    if (!commands.hasOption("lowmem"))
+                    {
+                        similar = new StoredSimilar(ld);
+                    }
+                    else
+                    {
+                        similar = new CalculatedSimilar(corr, transpose(original), Integer.parseInt(commands.getOptionValue("ldnum", "65")));
+                    }
                     int l;
                     if (commands.hasOption("fixedk"))
                     {
@@ -491,15 +505,6 @@ public class LinkImpute
                         partstart = System.currentTimeMillis();                  
 
 
-                        Similar similar;
-                        if (!commands.hasOption("lowmem"))
-                        {
-                            similar = new StoredSimilar(ld);
-                        }
-                        else
-                        {
-                             similar = new CalculatedSimilar(corr, transpose(original), Integer.parseInt(commands.getOptionValue("ldnum", "65")));
-                        }
                         KnniLD knnild = new KnniLD(similar,k,l);
                         System.out.println("\tAccuracy:\t" + knnild.fastAccuracy(original, mask));
                         
@@ -517,9 +522,9 @@ public class LinkImpute
                     {
                         System.out.println("Starting optimizing parameters...");
                         partstart = System.currentTimeMillis();
-                        KnniLDOpt knnildopt = new KnniLDOpt(original,mask,ld,verbose);
+                        KnniLDOpt knnildopt = new KnniLDOpt(original,mask,similar,verbose);
                         int[] startmaxld = {9,17};
-                        int[] absmaxld = {original.length,ld.get(0).size()};
+                        int[] absmaxld = {original.length,Integer.parseInt(commands.getOptionValue("ldnum", "65"))};
                         Optimize ol = new Optimize(knnildopt,startmaxld,absmaxld);
                         if (!verbose)
                         {
@@ -544,7 +549,7 @@ public class LinkImpute
 
                     System.out.println("Starting imputation...");
                     partstart = System.currentTimeMillis();
-                    KnniLD knnild = new KnniLD(new StoredSimilar(ld),k,l);
+                    KnniLD knnild = new KnniLD(similar,k,l);
                     imputed = knnild.compute(original);
                     if (verbose)
                     {

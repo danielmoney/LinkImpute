@@ -22,7 +22,7 @@ package Mask;
  * and a snp)
  * @author Daniel Money
  */
-public class SampleSnp
+public class SampleSnp implements Comparable<SampleSnp>
 {
 
     /**
@@ -52,6 +52,19 @@ public class SampleSnp
     public int getSnp()
     {
         return snp;
+    }
+
+    public int compareTo(SampleSnp o)
+    {
+        int pc = Integer.compare(snp,o.snp);
+        if (pc != 0)
+        {
+            return pc;
+        }
+        else
+        {
+            return Integer.compare(sample,o.sample);
+        }
     }
 
     private final int sample;

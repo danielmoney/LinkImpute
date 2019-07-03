@@ -18,6 +18,7 @@
 package Methods;
 
 import Mask.Mask;
+import Similarity.Similar;
 import Similarity.StoredSimilar;
 import Utils.Value;
 import java.util.List;
@@ -34,10 +35,9 @@ public class KnniLDOpt implements Value
      * Constructor
      * @param orig The original matrix
      * @param mask The mask
-     * @param sim Calculated similarity between SNPs (LD).  Map from SNP to
-     * list of most similar SNPs
+     * @param sim Object for accessing similarity between SNPs
      */
-    public KnniLDOpt(byte[][] orig, Mask mask, Map<Integer,List<Integer>> sim)
+    public KnniLDOpt(byte[][] orig, Mask mask,Similar sim)
     {
         this(orig,mask,sim,false);
     }
@@ -46,11 +46,10 @@ public class KnniLDOpt implements Value
      * Constructor
      * @param orig The original matrix
      * @param mask The mask
-     * @param sim Calculated similarity between SNPs (LD).  Map from SNP to
-     * list of most similar SNPs
+     * @param sim  Object for accessing similarity between SNPs
      * @param verbose Verbose output to standard out?
      */
-    public KnniLDOpt(byte[][] orig, Mask mask, Map<Integer,List<Integer>> sim,
+    public KnniLDOpt(byte[][] orig, Mask mask, Similar sim,
             boolean verbose)
     {
         this.orig = orig;
@@ -70,7 +69,7 @@ public class KnniLDOpt implements Value
     @Override
     public double value(int[] p)
     {
-        KnniLD knnild = new KnniLD(new StoredSimilar(sim),p[0],p[1]);
+        KnniLD knnild = new KnniLD(sim,p[0],p[1]);
         long start = System.currentTimeMillis();
         double v = knnild.fastAccuracy(orig, mask);
         long time = (System.currentTimeMillis() - start) / 1000;
@@ -87,6 +86,6 @@ public class KnniLDOpt implements Value
     
     private byte[][] orig;
     private Mask mask;
-    private Map<Integer,List<Integer>> sim;
+    private Similar sim;
     private boolean verbose;
 }

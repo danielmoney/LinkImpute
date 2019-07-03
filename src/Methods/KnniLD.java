@@ -26,9 +26,8 @@ import Utils.Progress;
 import Utils.SilentProgress;
 import Utils.TextProgress;
 import Utils.SortByIndexDouble;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -232,31 +231,25 @@ public class KnniLD
     public double fastAccuracy(byte[][] original, Mask mask)
     {
         int nt = Runtime.getRuntime().availableProcessors();
-        ExecutorService es = Executors.newFixedThreadPool(nt);        
+        ExecutorService es = Executors.newFixedThreadPool(nt);
     
-        boolean[][] maskA = mask.getArray();
-        //List<SampleSnp> fullList = mask.getList();
-        
-        //int nt = Runtime.getRuntime().availableProcessors();
-        List<List<SampleSnp>> lists = new ArrayList<>(nt);
-        for (int t = 0; t < nt; t++)
+        Set<SampleSnp> masked = mask.getSet();
+        List<List<SampleSnp>> lists = new ArrayList<>();
+        int perlist = masked.size() / nt + 1;
+        List<SampleSnp> curlist = new ArrayList<>();
+        lists.add(curlist);
+        int curcount = 0;
+
+        for (SampleSnp ss : masked)
         {
-            lists.add(new ArrayList<SampleSnp>());
-        }
-        int ct = 0;
-        int cm = 0;
-        for (int i = 0; i < maskA.length; i++)
-        {
-            boolean[] m = maskA[i];
-            for (int j = 0; j < m.length; j++)
+            if (curcount == perlist)
             {
-                if (m[j])
-                {
-                    lists.get(ct).add(new SampleSnp(i,j));
-                    ct = (ct + 1) % nt;
-                    cm ++;
-                }
+                curcount = 0;
+                curlist = new ArrayList<>();
+                lists.add(curlist);
             }
+            curlist.add(ss);
+            curcount++;
         }
         
         List<FastPart> parts = new ArrayList<>();
@@ -281,7 +274,7 @@ public class KnniLD
         }
         
         es.shutdown();
-        return (double) cc / (double) cm;
+        return (double) cc / (double) masked.size();
     }
     
     private class Part implements Callable<Void>
