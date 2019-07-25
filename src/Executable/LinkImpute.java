@@ -418,7 +418,7 @@ public class LinkImpute
                     if (commands.hasOption("fixedk"))
                     {
                         k = Integer.parseInt(commands.getOptionValue("fixedk"));
-                        System.out.println("Estimating Acciracy...");
+                        System.out.println("Estimating accuracy...");
                         partstart = System.currentTimeMillis();                  
 
                         Knni knni = new Knni(k);
@@ -482,7 +482,7 @@ public class LinkImpute
                     {
                         k = Integer.parseInt(commands.getOptionValue("fixedk"));
                         l = Integer.parseInt(commands.getOptionValue("fixedl"));
-                        System.out.println("Estimating Acciracy...");
+                        System.out.println("Estimating accuracy...");
                         partstart = System.currentTimeMillis();                  
 
                         KnniLD knnild = new KnniLD(ld,k,l);
