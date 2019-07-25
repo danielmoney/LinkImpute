@@ -25,9 +25,8 @@ import Utils.Progress;
 import Utils.SilentProgress;
 import Utils.TextProgress;
 import Utils.SortByIndexDouble;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -105,6 +104,8 @@ public class KnniLD
 
         byte[][] imputed = new byte[original.length][];
 
+        Set<Integer> allNotImputed = new TreeSet<>();
+
         // Loop over samples in order and then snps, imputing those genotypes that
         // are missing
         for (int s = 0; s < original.length; s++)
@@ -116,20 +117,45 @@ public class KnniLD
             for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++)
             {
                 int start = preend;
-                int end = (i+1) * original[s].length / Runtime.getRuntime().availableProcessors() + 1;
+                //Math.min is a bit fudgy but it works for now
+                int end = Math.min((i+1) * original[s].length / Runtime.getRuntime().availableProcessors() + 1, original[s].length);
                 preend = end;
                 
                 parts.add(new Part(original,imputed[s],s,start,end));
             }
             try
             {
-                es.invokeAll(parts);
+                List<Future<Set<Integer>>> notImputed = es.invokeAll(parts);
+                for (Future<Set<Integer>> ni: notImputed)
+                {
+                    allNotImputed.addAll(ni.get());
+                }
             }
-            catch (InterruptedException ex)
+            catch (InterruptedException | ExecutionException ex)
             {
-                //NEED TO DEAL WITH THIS PROPERLY!
+                // We shouldn't really get here so no nice way to deal with it, hence throw error and crash
+                throw new Error(ex);
             }
             progress.done();
+        }
+
+        if (allNotImputed.size() > 0)
+        {
+            System.err.println();
+            System.err.println("WARNING: Unable to impute genotypes forthe following SNPs");
+            System.err.println("due to not enough known genotypes for these SNPs:");
+            boolean first = true;
+            for (Integer i: allNotImputed)
+            {
+                if (!first)
+                {
+                    System.err.println("\t");
+                }
+                first = false;
+                System.err.print(i);
+            }
+            System.err.println();
+            System.err.println();
         }
         
         es.shutdown();
@@ -308,7 +334,7 @@ public class KnniLD
         return (double) cc / (double) cm;
     }
     
-    private class Part implements Callable<Void>
+    private class Part implements Callable<Set<Integer>>
     {
         public Part(byte[][] original, byte[] imputed,
                 int s, int start, int end)
@@ -321,8 +347,9 @@ public class KnniLD
         }
         
         @Override
-        public Void call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+        public Set<Integer> call() throws NotEnoughGenotypesException, WrongNumberOfSNPsException
         {
+            Set<Integer> notImputed = new TreeSet<>();
             for (int p = start; p < end; p++)
             {
                 if (original[s][p] >= 0)
@@ -331,11 +358,19 @@ public class KnniLD
                 }
                 else
                 {
-                    byte imp = impute(s,p,original);
-                    imputed[p] = imp;
+                    try
+                    {
+                        byte imp = impute(s, p, original);
+                        imputed[p] = imp;
+                    }
+                    catch (NotEnoughGenotypesException ex)
+                    {
+                        imputed[p] = -1;
+                        notImputed.add(p);
+                    }
                 }
             }
-            return null;
+            return notImputed;
         }
         
         private final int s;
