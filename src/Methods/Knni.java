@@ -23,6 +23,8 @@ import Mask.Mask;
 import Utils.SortByIndexDouble;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -78,10 +80,12 @@ public class Knni
      * every sample
      * @return The imputed data set.
      */
-    public byte[][] compute(byte[][] original, double[][] d) throws NotEnoughGenotypesException, WrongNumberOfSNPsException
+    public byte[][] compute(byte[][] original, double[][] d) throws WrongNumberOfSNPsException
     {
         // NEED SOME PROPER ERROR CHECKING HERE, IN CASE THE NUMBER OF SAMPLES IN
         // ORIGINAL AND D DISAGREE
+
+        Set<Integer> notImputed = new TreeSet<>();
 
         byte[][] imputed = new byte[original.length][];
         
@@ -103,9 +107,35 @@ public class Knni
                 }
                 else
                 {
-                    imputed[s][p] = impute(p, original, indicies, d[s]);
+                    try
+                    {
+                        imputed[s][p] = impute(p, original, indicies, d[s]);
+                    }
+                    catch (NotEnoughGenotypesException ex)
+                    {
+                        notImputed.add(p);
+                    }
                 }
             }
+        }
+
+        if (notImputed.size() > 0)
+        {
+            System.err.println();
+            System.err.println("WARNING: Unable to impute genotypes forthe following SNPs");
+            System.err.println("due to not enough known genotypes for these SNPs:");
+            boolean first = true;
+            for (Integer i: notImputed)
+            {
+                if (!first)
+                {
+                    System.err.println("\t");
+                }
+                first = false;
+                System.err.print(i);
+            }
+            System.err.println();
+            System.err.println();
         }
        
         return imputed;
@@ -164,7 +194,7 @@ public class Knni
      * @throws Exceptions.NotEnoughGenotypesException Thrown if there are not k
      * known genotypes avaliable for a SNP
      */  
-    public double fastAccuracy(byte[][] original, Mask mask) throws NotEnoughGenotypesException
+    public double fastAccuracy(byte[][] original, Mask mask)
     {
         return fastAccuracy(original, mask, weight(original));
     }
@@ -179,7 +209,7 @@ public class Knni
      * @throws Exceptions.NotEnoughGenotypesException Thrown if there are not k
      * known genotypes avaliable for a SNP
      */  
-    public double fastAccuracy(byte[][] original, Mask mask, double[][] d) throws NotEnoughGenotypesException
+    public double fastAccuracy(byte[][] original, Mask mask, double[][] d)
     {
         boolean[][] maskA = mask.getArray();
         int correct = 0;
@@ -194,11 +224,22 @@ public class Knni
                 {
                     SortByIndexDouble si = new SortByIndexDouble(d[i],true);
                     Integer[] indicies = si.sort();
-                    
-                    byte imputed = impute(j ,original, indicies, d[i]);
-                    if (imputed == original[i][j])
+
+                    try
                     {
-                        correct++;
+                        byte imputed = impute(j, original, indicies, d[i]);
+                        if (imputed == original[i][j])
+                        {
+                            correct++;
+                        }
+                    }
+                    catch (NotEnoughGenotypesException ex)
+                    {
+                        // Doing nothing here makes a certain amount of sense.  If we can't impute it then by definition
+                        // we've imputed it incorrectly.  Throwing an error probably doesn't make sense as we may have an
+                        // higher accuracy with this value of k even if some SNPs can't be imputed.  If we end up using
+                        // this value of k a warning message will be displayed when imputing.  If we don't then it's
+                        // not a concern.
                     }
                     total++;
                 }
