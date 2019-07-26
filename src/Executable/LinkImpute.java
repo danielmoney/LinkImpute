@@ -201,7 +201,7 @@ public class LinkImpute
             }
             if (version)
             {
-                System.out.println("Version 1.1.3 (28 October 2017)");
+                System.out.println("Version 1.1.4 (26 July 2019)");
             }
             if (!(version || help))
             {
