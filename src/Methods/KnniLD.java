@@ -327,7 +327,8 @@ public class KnniLD
         }
         catch (InterruptedException | ExecutionException ex)
         {
-            //NEED TO DEAL WITH THIS PROPERLY
+            // We shouldn't really get here so no nice way to deal with it, hence throw error and crash
+            throw new Error(ex);
         }
         
         es.shutdown();
@@ -393,11 +394,22 @@ public class KnniLD
         {
             int c = 0;
             for (SampleSnp ss: todo)
-            {                
-                byte imp = impute(ss.getSample(), ss.getSnp(), orig);
-                if (imp == orig[ss.getSample()][ss.getSnp()])
+            {
+                try
                 {
-                    c++;
+                    byte imp = impute(ss.getSample(), ss.getSnp(), orig);
+                    if (imp == orig[ss.getSample()][ss.getSnp()])
+                    {
+                        c++;
+                    }
+                }
+                catch (NotEnoughGenotypesException ex)
+                {
+                    // Doing nothing here makes a certain amount of sense.  If we can't impute it then by definition
+                    // we've imputed it incorrectly.  Throwing an error probably doesn't make sense as we may have an
+                    // higher accuracy with this value of k even if some SNPs can't be imputed.  If we end up using
+                    // this value of k a warning message will be displayed when imputing.  If we don't then it's
+                    // not a concern.
                 }
             }
             return c;
